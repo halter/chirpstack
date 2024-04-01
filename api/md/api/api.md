@@ -3670,6 +3670,7 @@ GatewayService is the service providing API methods for managing gateways.
 | f_cnt | [uint32](#uint32) |  | Downlink frame-counter. This will be automatically set on enqueue. |
 | f_port | [uint32](#uint32) |  | FPort (must be &gt; 0). |
 | data | [bytes](#bytes) |  | Payload. |
+| emit_at | [int64](#int64) | optional | Time to emit message at, in milliseconds after GPS epoch. |
 
 
 
