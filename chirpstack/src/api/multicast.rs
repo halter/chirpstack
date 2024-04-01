@@ -407,7 +407,7 @@ impl MulticastGroupService for MulticastGroup {
             )
             .await?;
 
-        let f_cnt = downlink::multicast::enqueue(multicast::MulticastGroupQueueItem {
+        let qi = multicast::MulticastGroupQueueItem {
             multicast_group_id: mg_id.into(),
             f_port: req_enq.f_port as i16,
             data: req_enq.data.clone(),
@@ -419,8 +419,11 @@ impl MulticastGroupService for MulticastGroup {
             } else {
                 None
             },
+            emit_at_time_since_gps_epoch: req_enq.emit_at,
             ..Default::default()
-        })
+        };
+
+        let f_cnt = downlink::multicast::enqueue(qi)
         .await
         .map_err(|e| e.status())?;
 
@@ -490,6 +493,7 @@ impl MulticastGroupService for MulticastGroup {
                         let v: std::time::SystemTime = v.into();
                         v.into()
                     }),
+                    emit_at: qi.emit_at_time_since_gps_epoch,
                 });
             }
         }

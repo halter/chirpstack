@@ -104,7 +104,7 @@ service MulticastGroupService {
     rpc ListQueue(ListMulticastGroupQueueRequest) returns (ListMulticastGroupQueueResponse) {
         option(google.api.http) = {
             get: "/api/multicast-groups/{multicast_group_id}/queue"
-        };        
+        };
     }
 }
 
@@ -306,6 +306,9 @@ message MulticastGroupQueueItem {
     // Expires at (optional).
     // Expired queue-items will be automatically removed from the queue.
     google.protobuf.Timestamp expires_at = 5;
+
+    // Time to emit message at, in milliseconds after GPS epoch.
+    optional int64 emit_at = 6;
 }
 
 message EnqueueMulticastGroupQueueItemRequest {
