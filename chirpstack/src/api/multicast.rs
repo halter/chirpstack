@@ -407,7 +407,7 @@ impl MulticastGroupService for MulticastGroup {
             )
             .await?;
 
-        let qi =multicast::MulticastGroupQueueItem {
+        let qi = multicast::MulticastGroupQueueItem {
             multicast_group_id: mg_id,
             f_port: req_enq.f_port as i16,
             data: req_enq.data.clone(),
@@ -416,8 +416,8 @@ impl MulticastGroupService for MulticastGroup {
         };
 
         let f_cnt = downlink::multicast::enqueue(qi)
-        .await
-        .map_err(|e| e.status())?;
+            .await
+            .map_err(|e| e.status())?;
 
         let mut resp = Response::new(api::EnqueueMulticastGroupQueueItemResponse { f_cnt });
         resp.metadata_mut().insert(
@@ -782,6 +782,7 @@ pub mod test {
                 f_cnt: 31,
                 f_port: 10,
                 data: vec![1, 2, 3],
+                emit_at: list_queue_resp.items[0].emit_at,
             },
             list_queue_resp.items[0]
         );
