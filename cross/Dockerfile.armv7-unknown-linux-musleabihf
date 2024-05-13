@@ -2,8 +2,7 @@ FROM ghcr.io/cross-rs/armv7-unknown-linux-musleabihf:main
 
 RUN apt-get update && \
     apt-get --assume-yes install \
-    protobuf-compiler \
-    libprotobuf-dev
+    unzip
 
 ENV MUSL_PREFIX=arm-linux-musleabihf
 ENV SQLITE_VERSION=3460000
@@ -17,3 +16,6 @@ RUN echo "Building SQLite" && \
   rm -r /tmp/*
 
 ENV PKG_CONFIG_PATH=/usr/local/$MUSL_PREFIX-target/lib/pkgconfig
+
+ENV PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+RUN curl -LO $PB_REL/download/v26.1/protoc-26.1-linux-x86_64.zip && unzip protoc-26.1-linux-x86_64.zip -d / && mv /include /bin/

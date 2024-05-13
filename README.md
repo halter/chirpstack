@@ -145,3 +145,4 @@ database backend, set the `DATABASE=sqlite` env. variable.
 
 ChirpStack Network Server is distributed under the MIT license. See also
 [LICENSE](https://github.com/brocaar/chirpstack/blob/master/LICENSE).
+
