@@ -1,8 +1,6 @@
-FROM ghcr.io/cross-rs/aarch64-unknown-linux-musl:latest
+FROM ghcr.io/cross-rs/aarch64-unknown-linux-musl:main
 
 RUN apt-get update && \
     apt-get --assume-yes install \
-    unzip
-
-ENV PB_REL="https://github.com/protocolbuffers/protobuf/releases"
-RUN curl -LO $PB_REL/download/v26.1/protoc-26.1-linux-x86_64.zip && unzip protoc-26.1-linux-x86_64.zip -d / && mv /include /bin/
+    protobuf-compiler \
+    libprotobuf-dev
