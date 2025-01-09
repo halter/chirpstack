@@ -1,6 +1,9 @@
-.PHONY: rust grpc-web go js python md java kotlin csharp php c
+.PHONY: rust grpc-web go js python md java kotlin csharp php c fix-go-mod
 
 all: rust grpc-web go js python md java kotlin csharp php c
+
+fix-go-mod:
+	grep -l -r 'github.com/halter/chirpstack' . | xargs -n1 sed -i 's#github.com/halter/chirpstack#github.com/halter/chirpstack#g'
 
 rust:
 	cd rust && make
@@ -8,7 +11,7 @@ rust:
 grpc-web:
 	cd grpc-web && make
 
-go:
+go: fix-go-mod
 	cd go && make
 
 js:

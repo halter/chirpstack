@@ -246,7 +246,9 @@ async fn run_scheduler_test(t: &MulticastTest) {
     // set multicast-group queue
     multicast::flush_queue(&t.multicast_group.id).await.unwrap();
     for qi in &t.multicast_group_queue_items {
-        let _ = downlink::multicast::enqueue(qi.clone()).await.unwrap();
+        let _ = downlink::multicast::enqueue(qi.clone(), &vec![])
+            .await
+            .unwrap();
     }
 
     downlink::scheduler::schedule_multicast_group_queue_batch(1)
