@@ -391,6 +391,7 @@ impl MulticastGroupService for MulticastGroup {
         &self,
         request: Request<api::EnqueueMulticastGroupQueueItemRequest>,
     ) -> Result<Response<api::EnqueueMulticastGroupQueueItemResponse>, Status> {
+        let skip_gateways_list = &request.get_ref().skip_gateways_list;
         let req_enq = match &request.get_ref().queue_item {
             Some(v) => v,
             None => {
@@ -423,7 +424,7 @@ impl MulticastGroupService for MulticastGroup {
             ..Default::default()
         };
 
-        let f_cnt = downlink::multicast::enqueue(qi)
+        let f_cnt = downlink::multicast::enqueue(qi, skip_gateways_list)
             .await
             .map_err(|e| e.status())?;
 
@@ -734,6 +735,7 @@ pub mod test {
                     data: vec![1, 2, 3],
                     ..Default::default()
                 }),
+                skip_gateways_list: vec![],
             },
         );
         let enqueue_resp = service.enqueue(enqueue_req).await.unwrap();
@@ -772,6 +774,7 @@ pub mod test {
                     data: vec![1, 2, 3],
                     ..Default::default()
                 }),
+                skip_gateways_list: vec![],
             },
         );
         let enqueue_resp = service.enqueue(enqueue_req).await.unwrap();
@@ -837,6 +840,7 @@ pub mod test {
                     data: vec![1, 2, 3],
                     ..Default::default()
                 }),
+                skip_gateways_list: vec![],
             },
         );
         let enqueue_resp = service.enqueue(enqueue_req).await.unwrap();

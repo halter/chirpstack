@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -258,7 +259,10 @@ impl Multicast {
     }
 }
 
-pub async fn enqueue(qi: multicast::MulticastGroupQueueItem) -> Result<u32> {
+pub async fn enqueue(
+    qi: multicast::MulticastGroupQueueItem,
+    skip_gateways_list: &Vec<String>,
+) -> Result<u32> {
     // Try first to get configured gateways for multicast-group.
     let mut gateway_ids = multicast::get_gateway_ids(&qi.multicast_group_id).await?;
 
@@ -272,6 +276,21 @@ pub async fn enqueue(qi: multicast::MulticastGroupQueueItem) -> Result<u32> {
 
         // get minimum gateway set to cover all devices
         gateway_ids = get_minimum_gateway_set(&dev_gw_set)?;
+    } else if !skip_gateways_list.is_empty() {
+        let mut skip_gateway_set = HashSet::new();
+        for id in skip_gateways_list.iter() {
+            let eui = match EUI64::from_str(id) {
+                Ok(v) => v,
+                Err(e) => return Err(e.into()),
+            };
+            skip_gateway_set.insert(eui);
+        }
+
+        gateway_ids = gateway_ids
+            .iter()
+            .filter(|&eui| skip_gateway_set.contains(eui))
+            .map(|&eui| eui)
+            .collect();
     }
 
     // Enqueue multicast downlink for the given gw set.
