@@ -22,6 +22,8 @@ use crate::{codec, config, downlink, integration, maccommand, region, stream};
 use chirpstack_api::{common, integration as integration_pb, internal, stream as stream_pb};
 use lrwn::{AES128Key, EUI64};
 
+const HALTER_DATA_UPLINK_RESERVED_FRAME_PORT: u8 = 222;
+
 pub struct Data {
     uplink_frame_set: UplinkFrameSet,
     relay_context: Option<RelayContext>,
@@ -146,6 +148,14 @@ impl Data {
         ctx.update_device().await?;
         ctx.handle_uplink_ack().await?;
         ctx.save_metrics().await?;
+
+        if let lrwn::Payload::MACPayload(macPayload) = &ctx.phy_payload.payload {
+            if let Some(f_port) = macPayload.f_port {
+                if f_port == HALTER_DATA_UPLINK_RESERVED_FRAME_PORT {
+                    return Ok(());
+                }
+            }
+        };
 
         if ctx._is_relay() {
             ctx.handle_forward_uplink_req().await?;
