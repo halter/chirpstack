@@ -153,10 +153,15 @@ impl Stats {
             m.metrics.insert(format!("rx_dr_{}", k), *v as f64);
         }
 
+        let mut aggregations = metrics::Aggregation::default_aggregations();
+        if !aggregations.contains(&metrics::Aggregation::MINUTE) {
+            aggregations.push(metrics::Aggregation::MINUTE);
+        }
+
         metrics::save(
             &format!("gw:{}", self.gateway.as_ref().unwrap().gateway_id),
             &m,
-            &metrics::Aggregation::default_aggregations(),
+            &aggregations,
         )
         .await
         .context("Save gateway stats")?;
