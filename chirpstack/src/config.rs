@@ -158,6 +158,7 @@ pub struct Network {
     pub secondary_net_ids: Vec<NetID>,
     pub dev_addr_prefixes: Vec<DevAddrPrefix>,
     pub enabled_regions: Vec<String>,
+    pub mqtt_enabled_regions: Vec<String>,
     #[serde(with = "humantime_serde")]
     pub device_session_ttl: Duration,
     #[serde(with = "humantime_serde")]
@@ -176,6 +177,7 @@ impl Default for Network {
             secondary_net_ids: vec![],
             dev_addr_prefixes: vec![],
             enabled_regions: vec![],
+            mqtt_enabled_regions: vec![],
             device_session_ttl: Duration::from_secs(60 * 60 * 24 * 31),
             deduplication_delay: Duration::from_millis(200),
             get_downlink_data_delay: Duration::from_millis(100),

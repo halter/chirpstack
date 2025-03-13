@@ -30,7 +30,7 @@ pub async fn setup() -> Result<()> {
 
     info!("Setting up gateway backends for the different regions");
     for region in &conf.regions {
-        if !conf.network.enabled_regions.contains(&region.id) {
+        if !conf.network.mqtt_enabled_regions.contains(&region.id) {
             continue;
         }
 
