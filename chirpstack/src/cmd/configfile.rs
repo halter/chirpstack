@@ -208,12 +208,22 @@ r#"
     {{/each}}
   ]
 
-  # Enabled regions.
+  # Enabled regions for band plan configuration.
   #
   # Multiple regions can be enabled simultaneously. Each region must match
   # the 'name' parameter of the region configuration in '[[regions]]'.
   enabled_regions=[
     {{#each network.enabled_regions}}
+    "{{this}}",
+    {{/each}}
+  ]
+
+  # Enabled regions for MQTT gateway bridge.
+  #
+  # Multiple regions can be enabled simultaneously. Each region must match
+  # the 'name' parameter of the region configuration in '[[regions]]'.
+  mqtt_enabled_regions=[
+    {{#each network.mqtt_enabled_regions}}
     "{{this}}",
     {{/each}}
   ]
