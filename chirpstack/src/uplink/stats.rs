@@ -10,7 +10,7 @@ use tracing::{error, info, span, trace, warn, Instrument, Level};
 
 use crate::gateway::backend as gateway_backend;
 use crate::helpers::errors::PrintFullError;
-use crate::storage::{error::Error, fields, gateway, metrics};
+use crate::storage::{error::Error, gateway, metrics};
 use crate::{config, region};
 use chirpstack_api::{common, gw};
 use lrwn::EUI64;
@@ -75,7 +75,6 @@ impl Stats {
 
         let mut gw_cs = gateway::GatewayChangeset {
             last_seen_at: Some(Some(Utc::now())),
-            properties: Some(fields::KeyValue::new(self.stats.metadata.clone())),
             ..Default::default()
         };
 
@@ -109,11 +108,11 @@ impl Stats {
             metrics: HashMap::new(),
         };
 
-        let region_config_id = self
-            .stats
-            .metadata
+        let gw = self.gateway.as_ref().unwrap();
+        let region_config_id = gw
+            .properties
             .get("region_config_id")
-            .ok_or_else(|| anyhow!("No region_config_id in meta-data"))?;
+            .ok_or_else(|| anyhow!("No region_config_id in gateway properties"))?;
 
         let tx_per_dr = per_modultation_to_per_dr(
             region_config_id,
@@ -240,9 +239,8 @@ impl Stats {
         }
 
         let gw = self.gateway.as_ref().unwrap();
-        let region_config_id = self
-            .stats
-            .metadata
+        let region_config_id = gw
+            .properties
             .get("region_config_id")
             .cloned()
             .unwrap_or_default();

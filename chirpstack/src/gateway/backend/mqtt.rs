@@ -385,10 +385,6 @@ async fn message_callback(
                 event.v4_migrate();
             }
 
-            event.metadata.insert(
-                "region_common_name".to_string(),
-                region_common_name.to_string(),
-            );
             set_gateway_json(&event.gateway_id, json);
             tokio::spawn(uplink::stats::Stats::handle(event));
         } else if topic.ends_with("/ack") {
