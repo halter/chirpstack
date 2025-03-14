@@ -65,6 +65,7 @@ impl GatewayService for Gateway {
             longitude: lon,
             altitude: alt,
             tags: fields::KeyValue::new(req_gw.tags.clone()),
+            properties: fields::KeyValue::new(req_gw.metadata.clone()),
             stats_interval_secs: req_gw.stats_interval as i32,
             ..Default::default()
         };
@@ -156,6 +157,7 @@ impl GatewayService for Gateway {
             longitude: lon,
             altitude: alt,
             tags: fields::KeyValue::new(req_gw.tags.clone()),
+            properties: fields::KeyValue::new(req_gw.metadata.clone()),
             stats_interval_secs: req_gw.stats_interval as i32,
             ..Default::default()
         })

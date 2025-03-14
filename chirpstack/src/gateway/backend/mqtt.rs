@@ -385,9 +385,6 @@ async fn message_callback(
                 event.v4_migrate();
             }
 
-            event
-                .metadata
-                .insert("region_config_id".to_string(), region_config_id.to_string());
             event.metadata.insert(
                 "region_common_name".to_string(),
                 region_common_name.to_string(),

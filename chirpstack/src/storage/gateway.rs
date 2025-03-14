@@ -237,6 +237,7 @@ pub async fn update(gw: Gateway) -> Result<Gateway, Error> {
             gateway::altitude.eq(&gw.altitude),
             gateway::stats_interval_secs.eq(&gw.stats_interval_secs),
             gateway::tags.eq(&gw.tags),
+            gateway::properties.eq(&gw.properties),
         ))
         .get_result(&mut get_async_db_conn().await?)
         .await
