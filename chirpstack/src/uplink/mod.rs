@@ -26,13 +26,9 @@ use lrwn::region::CommonName;
 use lrwn::{ForwardUplinkReq, MType, PhyPayload, EUI64};
 
 mod data;
-mod data_fns;
-pub mod data_sns;
 pub mod error;
 pub mod helpers;
 pub mod join;
-pub mod join_fns;
-pub mod join_sns;
 pub mod mesh;
 pub mod stats;
 
@@ -440,28 +436,6 @@ fn filter_rx_info_by_tenant_id(tenant_id: Uuid, uplink: &mut UplinkFrameSet) -> 
     uplink.rx_info_set = rx_info_set;
     if uplink.rx_info_set.is_empty() {
         return Err(anyhow!("RxInfo set is empty after applying filters"));
-    }
-
-    Ok(())
-}
-
-fn filter_rx_info_by_public_only(uplink: &mut UplinkFrameSet) -> Result<()> {
-    let mut rx_info_set: Vec<gw::UplinkRxInfo> = Vec::new();
-
-    for rx_info in &uplink.rx_info_set {
-        let gateway_id = EUI64::from_str(&rx_info.gateway_id).context("Gateway ID")?;
-        if !(*uplink
-            .gateway_private_up_map
-            .get(&gateway_id)
-            .ok_or_else(|| anyhow!("gateway_id missing in gateway_private_up_map"))?)
-        {
-            rx_info_set.push(rx_info.clone());
-        }
-    }
-
-    uplink.rx_info_set = rx_info_set;
-    if uplink.rx_info_set.is_empty() {
-        return Err(anyhow!("rx_info_set is empty"));
     }
 
     Ok(())

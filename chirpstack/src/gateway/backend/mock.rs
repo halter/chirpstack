@@ -38,7 +38,3 @@ impl GatewayBackend for Backend {
 pub async fn get_downlink_frames() -> Vec<gw::DownlinkFrame> {
     DOWNLINK_FRAMES.write().await.drain(..).collect()
 }
-
-pub async fn get_gateway_configurations() -> Vec<gw::GatewayConfiguration> {
-    GATEWAY_CONFIGURATIONS.write().await.drain(..).collect()
-}

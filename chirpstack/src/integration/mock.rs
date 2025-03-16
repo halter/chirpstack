@@ -164,16 +164,8 @@ pub async fn get_log_event() -> Option<integration::LogEvent> {
         .cloned()
 }
 
-pub async fn get_join_events() -> Vec<integration::JoinEvent> {
-    JOIN_EVENTS.write().await.drain(..).collect()
-}
-
 pub async fn get_ack_events() -> Vec<integration::AckEvent> {
     ACK_EVENTS.write().await.drain(..).collect()
-}
-
-pub async fn get_txack_events() -> Vec<integration::TxAckEvent> {
-    TXACK_EVENTS.write().await.drain(..).collect()
 }
 
 pub async fn get_log_events() -> Vec<integration::LogEvent> {
@@ -182,12 +174,4 @@ pub async fn get_log_events() -> Vec<integration::LogEvent> {
 
 pub async fn get_status_events() -> Vec<integration::StatusEvent> {
     STATUS_EVENTS.write().await.drain(..).collect()
-}
-
-pub async fn get_location_events() -> Vec<integration::LocationEvent> {
-    LOCATION_EVENTS.write().await.drain(..).collect()
-}
-
-pub async fn get_integration_events() -> Vec<integration::IntegrationEvent> {
-    INTEGRATION_EVENTS.write().await.drain(..).collect()
 }

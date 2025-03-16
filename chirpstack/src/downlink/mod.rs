@@ -2,12 +2,10 @@ use tracing::info;
 
 pub mod classb;
 pub mod data;
-pub mod data_fns;
 pub mod error;
 mod helpers;
 pub mod join;
 pub mod multicast;
-pub mod roaming;
 pub mod scheduler;
 pub mod tx_ack;
 

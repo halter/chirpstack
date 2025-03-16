@@ -29,7 +29,6 @@ pub mod helpers;
 pub mod mac_command;
 pub mod metrics;
 pub mod multicast;
-pub mod passive_roaming;
 #[cfg(feature = "postgres")]
 mod postgres;
 pub mod relay;

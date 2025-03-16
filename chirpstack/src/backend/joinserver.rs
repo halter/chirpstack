@@ -52,9 +52,3 @@ pub async fn get(join_eui: EUI64) -> Result<Arc<Client>> {
         join_eui
     ))
 }
-
-#[cfg(test)]
-pub async fn reset() {
-    let mut clients_w = CLIENTS.write().await;
-    *clients_w = vec![];
-}

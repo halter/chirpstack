@@ -4,13 +4,11 @@ use std::sync::{Mutex, Once};
 use crate::{adr, config, region, storage};
 
 mod assert;
-mod class_a_pr_test;
 mod class_a_test;
 mod class_b_test;
 mod class_c_test;
 mod multicast_test;
 mod otaa_js_test;
-mod otaa_pr_test;
 mod otaa_test;
 mod relay_class_a_test;
 mod relay_otaa_test;

@@ -3,12 +3,11 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Duration, Local, Utc};
-use tracing::{debug, error, info, span, trace, warn, Instrument, Level};
+use tracing::{error, info, span, trace, warn, Instrument, Level};
 
 use super::error::Error;
-use super::{data_fns, filter_rx_info_by_tenant_id, helpers, RelayContext, UplinkFrameSet};
+use super::{filter_rx_info_by_tenant_id, helpers, RelayContext, UplinkFrameSet};
 use crate::api::helpers::ToProto;
-use crate::backend::roaming;
 use crate::helpers::errors::PrintFullError;
 use crate::storage::error::Error as StorageError;
 use crate::storage::{
@@ -110,7 +109,6 @@ impl Data {
             device_changeset: Default::default(),
         };
 
-        ctx.handle_passive_roaming_device().await?;
         ctx.get_device_for_phy_payload().await?;
         ctx.get_device_data().await?;
         ctx.check_roaming_allowed()?;
@@ -149,8 +147,8 @@ impl Data {
         ctx.handle_uplink_ack().await?;
         ctx.save_metrics().await?;
 
-        if let lrwn::Payload::MACPayload(macPayload) = &ctx.phy_payload.payload {
-            if let Some(f_port) = macPayload.f_port {
+        if let lrwn::Payload::MACPayload(mac_payload) = &ctx.phy_payload.payload {
+            if let Some(f_port) = mac_payload.f_port {
                 if f_port == HALTER_DATA_UPLINK_RESERVED_FRAME_PORT {
                     return Ok(());
                 }
@@ -212,24 +210,6 @@ impl Data {
         ctx.handle_uplink_ack().await?;
         ctx.save_metrics_relayed().await?;
         ctx.start_downlink_data_flow_relayed().await?;
-
-        Ok(())
-    }
-
-    async fn handle_passive_roaming_device(&mut self) -> Result<(), Error> {
-        trace!("Handling passive-roaming device");
-        let mac = if let lrwn::Payload::MACPayload(pl) = &self.phy_payload.payload {
-            pl
-        } else {
-            return Err(Error::Anyhow(anyhow!("Expected MacPayload")));
-        };
-
-        if roaming::is_roaming_dev_addr(mac.fhdr.devaddr) {
-            debug!(dev_addr = %mac.fhdr.devaddr, "DevAddr does not match NetID, assuming roaming device");
-            data_fns::Data::handle(self.uplink_frame_set.clone(), mac.clone()).await;
-
-            return Err(Error::Abort);
-        }
 
         Ok(())
     }

@@ -11,11 +11,10 @@ use lrwn::{
 };
 
 use super::error::Error;
-use super::join_fns;
 use super::{filter_rx_info_by_tenant_id, helpers, RelayContext, UplinkFrameSet};
 
 use crate::api::{backend::get_async_receiver, helpers::ToProto};
-use crate::backend::{joinserver, keywrap, roaming};
+use crate::backend::{joinserver, keywrap};
 use crate::helpers::errors::PrintFullError;
 use crate::storage::{
     application,
@@ -268,13 +267,7 @@ impl JoinRequest {
             Ok(v) => v,
             Err(e) => {
                 if let StorageError::NotFound(_) = e {
-                    if !roaming::is_enabled() {
-                        warn!(dev_eui = %jr.dev_eui, "Unknown device");
-                        return Err(anyhow::Error::new(Error::Abort));
-                    }
-
                     info!(dev_eui = %jr.dev_eui, join_eui = %jr.join_eui, "Unknown device, trying passive-roaming activation");
-                    join_fns::JoinRequest::start_pr(self.uplink_frame_set.clone(), *jr).await?;
                     return Err(anyhow::Error::new(Error::Abort));
                 } else {
                     return Err(anyhow::Error::new(e));

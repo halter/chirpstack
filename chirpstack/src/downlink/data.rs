@@ -8,10 +8,8 @@ use chrono::{DateTime, Utc};
 use rand::Rng;
 use tracing::{debug, span, trace, warn, Instrument, Level};
 
-use crate::api::backend::get_async_receiver;
 use crate::api::helpers::{FromProto, ToProto};
-use crate::backend::roaming;
-use crate::downlink::{classb, error::Error, helpers, tx_ack};
+use crate::downlink::{classb, error::Error, helpers};
 use crate::gpstime::{ToDateTime, ToGpsTime};
 use crate::storage;
 use crate::storage::{
@@ -24,7 +22,7 @@ use crate::storage::{
 use crate::uplink::{RelayContext, UplinkFrameSet};
 use crate::{adr, config, gateway, integration, maccommand, region, sensitivity};
 use chirpstack_api::{gw, integration as integration_pb, internal};
-use lrwn::{keys, AES128Key, NetID};
+use lrwn::{keys, AES128Key};
 
 struct DownlinkFrameItem {
     downlink_frame_item: gw::DownlinkFrameItem,
@@ -219,8 +217,6 @@ impl Data {
             // device-session.
             ctx.update_device().await?;
             if ctx._is_roaming() {
-                ctx.send_downlink_frame_passive_roaming().await?;
-                ctx.handle_passive_roaming_tx_ack().await?;
             } else {
                 ctx.send_downlink_frame().await?;
             }
@@ -1068,85 +1064,6 @@ impl Data {
             },
         )
         .await?;
-
-        Ok(())
-    }
-
-    async fn send_downlink_frame_passive_roaming(&self) -> Result<()> {
-        trace!("Sending downlink-frame using passive-roaming");
-
-        let ufs = self.uplink_frame_set.as_ref().unwrap();
-        let ds = self.device.get_device_session()?;
-        let roaming_meta = ufs.roaming_meta_data.as_ref().unwrap();
-
-        let net_id = NetID::from_slice(&roaming_meta.base_payload.sender_id)?;
-        let client = roaming::get(&net_id).await?;
-
-        let mut req = backend::XmitDataReqPayload {
-            phy_payload: self.downlink_frame.items[0].phy_payload.clone(),
-            dl_meta_data: Some(backend::DLMetaData {
-                class_mode: Some("A".to_string()),
-                dev_eui: self.device.dev_eui.to_vec(),
-                f_ns_ul_token: roaming_meta.ul_meta_data.f_ns_ul_token.clone(),
-                dl_freq_1: {
-                    let rx1_freq = self
-                        .region_conf
-                        .get_rx1_frequency_for_uplink_frequency(ufs.tx_info.frequency)?;
-                    Some(rx1_freq as f64 / 1_000_000.0)
-                },
-                dl_freq_2: Some(ds.rx2_frequency as f64 / 1_000_000.0),
-                data_rate_1: {
-                    let rx1_dr = self
-                        .region_conf
-                        .get_rx1_data_rate_index(ds.dr as u8, ds.rx1_dr_offset as usize)?;
-                    Some(rx1_dr)
-                },
-                data_rate_2: Some(ds.rx2_dr as u8),
-                rx_delay_1: Some(ds.rx1_delay as usize),
-                gw_info: roaming_meta
-                    .ul_meta_data
-                    .gw_info
-                    .iter()
-                    .filter(|gw| gw.dl_allowed.unwrap_or_default())
-                    .map(|gw| backend::GWInfoElement {
-                        ul_token: gw.ul_token.clone(),
-                        ..Default::default()
-                    })
-                    .collect(),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-
-        #[cfg(test)]
-        {
-            req.base.transaction_id = 1234
-        }
-
-        let async_receiver = match client.is_async() {
-            false => None,
-            true => {
-                Some(get_async_receiver(req.base.transaction_id, client.get_async_timeout()).await?)
-            }
-        };
-        client
-            .xmit_data_req(backend::Role::FNS, &mut req, async_receiver)
-            .await?;
-
-        Ok(())
-    }
-
-    async fn handle_passive_roaming_tx_ack(&self) -> Result<()> {
-        trace!("Handle passive-roaming tx-ack");
-
-        tx_ack::TxAck::handle(gw::DownlinkTxAck {
-            downlink_id: self.downlink_frame.downlink_id,
-            items: vec![gw::DownlinkTxAckItem {
-                status: gw::TxAckStatus::Ok.into(),
-            }],
-            ..Default::default()
-        })
-        .await;
 
         Ok(())
     }

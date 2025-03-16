@@ -80,33 +80,6 @@ pub fn get_rx_timestamp(rx_info: &[gw::UplinkRxInfo]) -> SystemTime {
     SystemTime::now()
 }
 
-pub fn get_rx_timestamp_chrono(rx_info: &[gw::UplinkRxInfo]) -> DateTime<Utc> {
-    // First search for time_since_gps_epoch.
-    for rxi in rx_info {
-        if let Some(gps_time) = &rxi.time_since_gps_epoch {
-            if let Ok(ts) = chrono::Duration::from_std(Duration::new(
-                gps_time.seconds as u64,
-                gps_time.nanos as u32,
-            )) {
-                return ts.to_date_time();
-            }
-        }
-    }
-
-    // Then search for time.
-    for rxi in rx_info {
-        if let Some(ts) = &rxi.gw_time {
-            let ts: Result<DateTime<Utc>> = (*ts).try_into().map_err(anyhow::Error::msg);
-            if let Ok(ts) = ts {
-                return ts;
-            }
-        }
-    }
-
-    // last resort use systemtime of NS
-    Utc::now()
-}
-
 pub fn get_time_since_gps_epoch(rx_info: &[gw::UplinkRxInfo]) -> Option<Duration> {
     for rxi in rx_info {
         if let Some(gps_time) = &rxi.time_since_gps_epoch {

@@ -45,17 +45,6 @@ pub fn n_f_cnt_down(dev_eui: EUI64, f_cnt: u32) -> Validator {
     })
 }
 
-pub fn a_f_cnt_down(dev_eui: EUI64, f_cnt: u32) -> Validator {
-    Box::new(move || {
-        let dev_eui = dev_eui;
-        Box::pin(async move {
-            let d = device::get(&dev_eui).await.unwrap();
-            let ds = d.get_device_session().unwrap();
-            assert_eq!(f_cnt, ds.a_f_cnt_down);
-        })
-    })
-}
-
 pub fn tx_power_index(dev_eui: EUI64, tx_power: u32) -> Validator {
     Box::new(move || {
         let dev_eui = dev_eui;
