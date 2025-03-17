@@ -76,8 +76,8 @@ impl JoinAccept<'_> {
             tenant,
             device,
             join_accept,
-            network_conf: config::get_region_network(&ufs.region_config_id)?,
-            region_conf: region::get(&ufs.region_config_id)?,
+            network_conf: config::get_region_network(&ufs.device_region_config_id)?,
+            region_conf: region::get(&ufs.device_region_config_id)?,
 
             downlink_frame: chirpstack_api::gw::DownlinkFrame {
                 downlink_id,
@@ -111,8 +111,8 @@ impl JoinAccept<'_> {
             tenant,
             device,
             join_accept,
-            network_conf: config::get_region_network(&ufs.region_config_id)?,
-            region_conf: region::get(&ufs.region_config_id)?,
+            network_conf: config::get_region_network(&ufs.device_region_config_id)?,
+            region_conf: region::get(&ufs.device_region_config_id)?,
 
             downlink_frame: chirpstack_api::gw::DownlinkFrame {
                 downlink_id,
@@ -183,7 +183,7 @@ impl JoinAccept<'_> {
 
         let gw_down = helpers::select_downlink_gateway(
             Some(self.tenant.id.into()),
-            &self.uplink_frame_set.region_config_id,
+            &self.uplink_frame_set.mqtt_region_config_id,
             self.network_conf.gateway_prefer_min_margin,
             self.device_gateway_rx_info.as_mut().unwrap(),
         )?;
@@ -517,7 +517,7 @@ impl JoinAccept<'_> {
         trace!("Sending join-accept response");
 
         send_downlink(
-            &self.uplink_frame_set.region_config_id,
+            &self.uplink_frame_set.mqtt_region_config_id,
             &self.downlink_frame,
         )
         .await?;

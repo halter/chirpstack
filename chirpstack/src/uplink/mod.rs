@@ -88,7 +88,8 @@ pub struct UplinkFrameSet {
     pub gateway_private_down_map: HashMap<EUI64, bool>,
     pub gateway_tenant_id_map: HashMap<EUI64, Uuid>,
     pub region_common_name: CommonName,
-    pub region_config_id: String,
+    pub mqtt_region_config_id: String,
+    pub device_region_config_id: String,
     pub roaming_meta_data: Option<RoamingMetaData>,
 }
 
@@ -307,7 +308,8 @@ pub async fn handle_uplink(
     let mut uplink = UplinkFrameSet {
         uplink_set_id: deduplication_id,
         region_common_name,
-        region_config_id: region_config_id.to_string(),
+        mqtt_region_config_id: region_config_id.to_string(),
+        device_region_config_id: region_config_id.to_string(),
         dr: 0,
         ch: 0,
         phy_payload: PhyPayload::from_slice(&uplink.phy_payload)?,
@@ -325,13 +327,6 @@ pub async fn handle_uplink(
         })
         .inc();
 
-    uplink.dr = helpers::get_uplink_dr(&uplink.region_config_id, &uplink.tx_info)?;
-    uplink.ch = helpers::get_uplink_ch(
-        &uplink.region_config_id,
-        uplink.tx_info.frequency,
-        uplink.dr,
-    )?;
-
     info!(
         m_type = %uplink.phy_payload.mhdr.m_type,
         "Uplink received"
@@ -347,6 +342,13 @@ pub async fn handle_uplink(
     stream::frame::log_uplink_for_gateways(&ufl)
         .await
         .context("Log uplink for gateways")?;
+
+    uplink.dr = helpers::get_uplink_dr(&uplink.device_region_config_id, &uplink.tx_info)?;
+    uplink.ch = helpers::get_uplink_ch(
+        &uplink.device_region_config_id,
+        uplink.tx_info.frequency,
+        uplink.dr,
+    )?;
 
     match uplink.phy_payload.mhdr.m_type {
         MType::JoinRequest => join::JoinRequest::handle(uplink).await,
@@ -410,7 +412,7 @@ async fn update_gateway_metadata(ufs: &mut UplinkFrameSet) -> Result<()> {
 }
 
 fn filter_rx_info_by_tenant_id(tenant_id: Uuid, uplink: &mut UplinkFrameSet) -> Result<()> {
-    let force_gws_private = config::get_force_gws_private(&uplink.region_config_id)?;
+    let force_gws_private = config::get_force_gws_private(&uplink.mqtt_region_config_id)?;
     let mut rx_info_set: Vec<gw::UplinkRxInfo> = Vec::new();
 
     for rx_info in &uplink.rx_info_set {

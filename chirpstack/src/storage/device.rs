@@ -3,6 +3,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
+use chirpstack_api::gw::UplinkTxInfo;
 use chrono::{DateTime, Duration, Utc};
 use diesel::{backend::Backend, deserialize, dsl, prelude::*, serialize, sql_types::Text};
 use diesel_async::RunQueryDsl;
@@ -12,15 +13,17 @@ use uuid::Uuid;
 use chirpstack_api::internal;
 use lrwn::{DevAddr, EUI64};
 
+use super::device_profile::DeviceProfile;
 use super::schema::{application, device, device_profile, multicast_group_device, tenant};
 use super::{db_transaction, error::Error, fields, get_async_db_conn};
 use crate::api::helpers::FromProto;
 use crate::config;
+use crate::uplink::helpers;
 
 pub enum ValidationStatus {
-    Ok(u32, Device),
-    Retransmission(u32, Device),
-    Reset(u32, Device),
+    Ok(String, u8, usize, u32, Device),
+    Retransmission(String, u8, usize, u32, Device),
+    Reset(String, u8, usize, u32, Device),
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, AsExpression, FromSqlRow)]
@@ -299,11 +302,13 @@ pub async fn get(dev_eui: &EUI64) -> Result<Device, Error> {
 // On Ok response, the PhyPayload f_cnt will be set to the full 32bit frame-counter based on the
 // device-session context.
 pub async fn get_for_phypayload_and_incr_f_cnt_up(
-    region_config_id: &str,
+    mqtt_region_config_id: &str,
     relayed: bool,
     phy: &mut lrwn::PhyPayload,
     tx_dr: u8,
-    tx_ch: u8,
+    tx_ch: usize,
+    tx_frequency: u32,
+    tx_info: &UplinkTxInfo,
 ) -> Result<ValidationStatus, Error> {
     // Get the dev_addr and original f_cnt.
     let (dev_addr, f_cnt_orig) = if let lrwn::Payload::MACPayload(pl) = &phy.payload {
@@ -314,6 +319,7 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
 
     let mut c = get_async_db_conn().await?;
 
+    let mut device_profiles: HashMap<String, DeviceProfile> = HashMap::new();
     db_transaction::<ValidationStatus, Error, _>(&mut c, |c| {
         Box::pin(async move {
             let query = device::dsl::device
@@ -334,6 +340,32 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
             for d in &mut devices {
                 let mut sessions = vec![];
 
+                let mut device_region_config_id = mqtt_region_config_id.to_string();
+                let mut data_rate = tx_dr;
+                let mut channel_index = tx_ch;
+                if device_profiles
+                    .get(&d.device_profile_id.to_string())
+                    .is_none()
+                {
+                    let dp: DeviceProfile = device_profile::dsl::device_profile
+                        .find(&d.device_profile_id)
+                        .get_result(c)
+                        .await
+                        .map_err(|e| Error::from_diesel(e, d.device_profile_id.to_string()))?;
+                    device_profiles.insert(d.device_profile_id.to_string(), dp);
+                }
+                let dp = device_profiles
+                    .get(&d.device_profile_id.to_string())
+                    .unwrap();
+                if !dp.region_config_id.is_none() {
+                    device_region_config_id = dp.clone().region_config_id.unwrap();
+                    if !relayed {
+                        data_rate = helpers::get_uplink_dr(&device_region_config_id, &tx_info)?;
+                    }
+                    channel_index =
+                        helpers::get_uplink_ch(&device_region_config_id, tx_frequency, data_rate)?;
+                }
+
                 if let Some(ds) = &d.device_session {
                     sessions.push(ds.clone());
                     if let Some(ds) = &ds.pending_rejoin_device_session {
@@ -345,14 +377,16 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                     // Set the region_config_id if it is empty, e.g. after a ChirpStack v3 to
                     // ChirpStack v4 migration.
                     if ds.region_config_id.is_empty() {
-                        ds.region_config_id = region_config_id.into();
+                        ds.region_config_id = device_region_config_id.clone();
                     }
                     // Check that the DevAddr and region_config_id are equal.
                     // The latter is needed because we must assure that the uplink was received
                     // under the same region as the device was activated. In case the uplink was
                     // received under two region configurations, this will start two uplink flows,
                     // each with their own region_config_id associated.
-                    if ds.region_config_id != region_config_id || ds.dev_addr != dev_addr.to_vec() {
+                    if ds.region_config_id != device_region_config_id
+                        || ds.dev_addr != dev_addr.to_vec()
+                    {
                         continue;
                     }
 
@@ -377,8 +411,8 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                             .validate_uplink_data_mic(
                                 ds.mac_version().from_proto(),
                                 ds.conf_f_cnt,
-                                tx_dr,
-                                tx_ch,
+                                data_rate,
+                                channel_index as u8,
                                 &f_nwk_s_int_key,
                                 &s_nwk_s_int_key,
                             )
@@ -420,19 +454,43 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                             // We do return the device-session with original frame-counter
                             ds.f_cnt_up = ds_f_cnt_up;
                             d.device_session = Some(ds.clone());
-                            return Ok(ValidationStatus::Ok(full_f_cnt, d.clone()));
+                            return Ok(ValidationStatus::Ok(
+                                device_region_config_id,
+                                data_rate,
+                                channel_index,
+                                full_f_cnt,
+                                d.clone(),
+                            ));
                         } else if ds.skip_f_cnt_check {
                             // re-transmission or frame-counter reset
                             ds.f_cnt_up = 0;
                             d.device_session = Some(ds.clone());
-                            return Ok(ValidationStatus::Ok(full_f_cnt, d.clone()));
+                            return Ok(ValidationStatus::Ok(
+                                device_region_config_id,
+                                data_rate,
+                                channel_index,
+                                full_f_cnt,
+                                d.clone(),
+                            ));
                         } else if full_f_cnt == (ds.f_cnt_up - 1) {
                             // re-transmission, the frame-counter did not increment
                             d.device_session = Some(ds.clone());
-                            return Ok(ValidationStatus::Retransmission(full_f_cnt, d.clone()));
+                            return Ok(ValidationStatus::Retransmission(
+                                device_region_config_id,
+                                data_rate,
+                                channel_index,
+                                full_f_cnt,
+                                d.clone(),
+                            ));
                         } else {
                             d.device_session = Some(ds.clone());
-                            return Ok(ValidationStatus::Reset(full_f_cnt, d.clone()));
+                            return Ok(ValidationStatus::Reset(
+                                device_region_config_id,
+                                data_rate,
+                                channel_index,
+                                full_f_cnt,
+                                d.clone(),
+                            ));
                         }
                     }
 
@@ -1416,7 +1474,12 @@ pub mod test {
                 pl.fhdr.f_cnt = tst.f_cnt % (1 << 16);
             }
 
-            let d = get_for_phypayload_and_incr_f_cnt_up("eu868", false, &mut phy, 0, 0).await;
+            let tx_info = UplinkTxInfo {
+                ..Default::default()
+            };
+            let d =
+                get_for_phypayload_and_incr_f_cnt_up("eu868", false, &mut phy, 0, 0, 0, &tx_info)
+                    .await;
             if tst.expected_error.is_some() {
                 assert!(d.is_err());
                 assert_eq!(
@@ -1434,15 +1497,15 @@ pub mod test {
                     assert_eq!(tst.expected_fcnt_up, pl.fhdr.f_cnt);
                 }
 
-                if let ValidationStatus::Ok(full_f_cnt, d) = d {
+                if let ValidationStatus::Ok(_, _, _, full_f_cnt, d) = d {
                     assert!(!tst.expected_retransmission);
                     assert_eq!(tst.expected_dev_eui, d.dev_eui,);
                     assert_eq!(tst.expected_fcnt_up, full_f_cnt);
-                } else if let ValidationStatus::Retransmission(full_f_cnt, d) = d {
+                } else if let ValidationStatus::Retransmission(_, _, _, full_f_cnt, d) = d {
                     assert!(tst.expected_retransmission);
                     assert_eq!(tst.expected_dev_eui, d.dev_eui,);
                     assert_eq!(tst.expected_fcnt_up, full_f_cnt);
-                } else if let ValidationStatus::Reset(_, d) = d {
+                } else if let ValidationStatus::Reset(_, _, _, _, d) = d {
                     assert!(tst.expected_reset);
                     assert_eq!(tst.expected_dev_eui, d.dev_eui,);
                 }

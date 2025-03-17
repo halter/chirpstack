@@ -198,7 +198,8 @@ pub mod test {
             gateway_private_down_map: Default::default(),
             gateway_tenant_id_map: Default::default(),
             region_common_name: lrwn::region::CommonName::EU868,
-            region_config_id: "eu868".into(),
+            mqtt_region_config_id: "eu868".into(),
+            device_region_config_id: "eu868".into(),
             roaming_meta_data: None,
         };
 

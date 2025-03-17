@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local, Utc};
-use tracing::{error, info, span, trace, warn, Instrument, Level};
+use tracing::{error, info, span, trace, Instrument, Level};
 
 use lrwn::{
     keys, AES128Key, CFList, DLSettings, JoinAcceptPayload, JoinRequestPayload, JoinType, MType,
@@ -115,7 +115,6 @@ impl JoinRequest {
         ctx.get_device_data_or_try_pr_roaming().await?;
         ctx.get_device_keys_or_js_client().await?; // used to validate MIC + if we need external JS
         ctx.set_device_info()?;
-        ctx.validate_region_config_id()?;
         ctx.filter_rx_info_by_tenant()?;
         ctx.abort_on_device_is_disabled()?;
         ctx.abort_on_relay_only_comm()?;
@@ -228,6 +227,17 @@ impl JoinRequest {
         if dp.region != self.uplink_frame_set.region_common_name {
             return Err(anyhow!("Invalid device-profile region"));
         }
+        if !dp.region_config_id.is_none() {
+            let device_region_config_id = dp.clone().region_config_id.unwrap();
+            self.uplink_frame_set.device_region_config_id = device_region_config_id.clone();
+            self.uplink_frame_set.dr =
+                helpers::get_uplink_dr(&device_region_config_id, &self.uplink_frame_set.tx_info)?;
+            self.uplink_frame_set.ch = helpers::get_uplink_ch(
+                &device_region_config_id,
+                self.uplink_frame_set.tx_info.frequency,
+                self.uplink_frame_set.dr,
+            )?;
+        }
 
         self.tenant = Some(t);
         self.application = Some(app);
@@ -278,6 +288,17 @@ impl JoinRequest {
         if dp.region != self.uplink_frame_set.region_common_name {
             return Err(anyhow!("Invalid device-profile region"));
         }
+        if !dp.region_config_id.is_none() {
+            let device_region_config_id = dp.clone().region_config_id.unwrap();
+            self.uplink_frame_set.device_region_config_id = device_region_config_id.clone();
+            self.uplink_frame_set.dr =
+                helpers::get_uplink_dr(&device_region_config_id, &self.uplink_frame_set.tx_info)?;
+            self.uplink_frame_set.ch = helpers::get_uplink_ch(
+                &device_region_config_id,
+                self.uplink_frame_set.tx_info.frequency,
+                self.uplink_frame_set.dr,
+            )?;
+        }
 
         self.tenant = Some(t);
         self.application = Some(app);
@@ -323,20 +344,6 @@ impl JoinRequest {
             rssi: relay_ctx.req.metadata.rssi as i32,
             wor_channel: relay_ctx.req.metadata.wor_channel as u32,
         });
-
-        Ok(())
-    }
-
-    fn validate_region_config_id(&self) -> Result<(), Error> {
-        trace!("Validating region_config_id against device-profile");
-
-        let dp = self.device_profile.as_ref().unwrap();
-        if let Some(v) = &dp.region_config_id {
-            if !self.uplink_frame_set.region_config_id.eq(v) {
-                warn!("Aborting as region config ID does not match with device-profile");
-                return Err(Error::Abort);
-            }
-        }
 
         Ok(())
     }
@@ -513,8 +520,9 @@ impl JoinRequest {
 
         let js_client = self.js_client.as_ref().unwrap();
         let jr = self.join_request.as_ref().unwrap();
-        let region_network = config::get_region_network(&self.uplink_frame_set.region_config_id)?;
-        let region_conf = region::get(&self.uplink_frame_set.region_config_id)?;
+        let region_network =
+            config::get_region_network(&self.uplink_frame_set.device_region_config_id)?;
+        let region_conf = region::get(&self.uplink_frame_set.device_region_config_id)?;
 
         let phy_b = self.uplink_frame_set.phy_payload.to_vec()?;
         let dp = self.device_profile.as_ref().unwrap();
@@ -605,8 +613,9 @@ impl JoinRequest {
         trace!("Constructing JoinAccept payload");
 
         let conf = config::get();
-        let region_network = config::get_region_network(&self.uplink_frame_set.region_config_id)?;
-        let region_conf = region::get(&self.uplink_frame_set.region_config_id)?;
+        let region_network =
+            config::get_region_network(&self.uplink_frame_set.device_region_config_id)?;
+        let region_conf = region::get(&self.uplink_frame_set.device_region_config_id)?;
         let join_request = self.join_request.as_ref().unwrap();
 
         let d = self.device.as_ref().unwrap();
@@ -762,14 +771,15 @@ impl JoinRequest {
     async fn set_device_session(&mut self) -> Result<()> {
         trace!("Setting device-session");
 
-        let region_conf = region::get(&self.uplink_frame_set.region_config_id)?;
-        let region_network = config::get_region_network(&self.uplink_frame_set.region_config_id)?;
+        let region_conf = region::get(&self.uplink_frame_set.device_region_config_id)?;
+        let region_network =
+            config::get_region_network(&self.uplink_frame_set.device_region_config_id)?;
 
         let device = self.device.as_mut().unwrap();
         let device_profile = self.device_profile.as_ref().unwrap();
 
         let mut ds = internal::DeviceSession {
-            region_config_id: self.uplink_frame_set.region_config_id.clone(),
+            region_config_id: self.uplink_frame_set.device_region_config_id.clone(),
             dev_addr: device.dev_addr.unwrap().to_be_bytes().to_vec(),
             f_nwk_s_int_key: self.f_nwk_s_int_key.as_ref().unwrap().to_vec(),
             s_nwk_s_int_key: self.s_nwk_s_int_key.as_ref().unwrap().to_vec(),
@@ -948,7 +958,7 @@ impl JoinRequest {
             } else {
                 None
             },
-            region_config_id: self.uplink_frame_set.region_config_id.clone(),
+            region_config_id: self.uplink_frame_set.device_region_config_id.clone(),
         };
 
         integration::join_event(app.id.into(), &dev.variables, &pl).await;

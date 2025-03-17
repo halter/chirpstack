@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
+use chirpstack_api::gw::UplinkTxInfo;
 use chrono::{DateTime, Duration, Local, Utc};
 use tracing::{error, info, span, trace, warn, Instrument, Level};
 
@@ -224,26 +225,55 @@ impl Data {
         };
 
         match device::get_for_phypayload_and_incr_f_cnt_up(
-            &self.uplink_frame_set.region_config_id,
+            &self.uplink_frame_set.device_region_config_id,
             false,
             &mut self.phy_payload,
             self.uplink_frame_set.dr,
-            self.uplink_frame_set.ch as u8,
+            self.uplink_frame_set.ch,
+            self.uplink_frame_set.tx_info.frequency,
+            &self.uplink_frame_set.tx_info,
         )
         .await
         {
             Ok(v) => match v {
-                device::ValidationStatus::Ok(f_cnt, d) => {
+                device::ValidationStatus::Ok(
+                    device_region_config_id,
+                    data_rate,
+                    channel_index,
+                    f_cnt,
+                    d,
+                ) => {
+                    self.uplink_frame_set.device_region_config_id = device_region_config_id;
+                    self.uplink_frame_set.dr = data_rate;
+                    self.uplink_frame_set.ch = channel_index;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
-                device::ValidationStatus::Retransmission(f_cnt, d) => {
+                device::ValidationStatus::Retransmission(
+                    device_region_config_id,
+                    data_rate,
+                    channel_index,
+                    f_cnt,
+                    d,
+                ) => {
                     self.retransmission = true;
+                    self.uplink_frame_set.device_region_config_id = device_region_config_id;
+                    self.uplink_frame_set.dr = data_rate;
+                    self.uplink_frame_set.ch = channel_index;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
-                device::ValidationStatus::Reset(f_cnt, d) => {
+                device::ValidationStatus::Reset(
+                    device_region_config_id,
+                    data_rate,
+                    channel_index,
+                    f_cnt,
+                    d,
+                ) => {
                     self.reset = true;
+                    self.uplink_frame_set.device_region_config_id = device_region_config_id;
+                    self.uplink_frame_set.dr = data_rate;
+                    self.uplink_frame_set.ch = channel_index;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
@@ -287,32 +317,64 @@ impl Data {
 
         let dr = relay_ctx.req.metadata.dr;
         let ch = helpers::get_uplink_ch(
-            &self.uplink_frame_set.region_config_id,
+            &self.uplink_frame_set.device_region_config_id,
             relay_ctx.req.frequency,
             dr,
-        )? as u8;
+        )?;
 
+        let tx_info = UplinkTxInfo {
+            ..Default::default()
+        };
         match device::get_for_phypayload_and_incr_f_cnt_up(
-            &self.uplink_frame_set.region_config_id,
+            &self.uplink_frame_set.device_region_config_id,
             true,
             &mut self.phy_payload,
             dr,
             ch,
+            relay_ctx.req.frequency,
+            &tx_info,
         )
         .await
         {
             Ok(v) => match v {
-                device::ValidationStatus::Ok(f_cnt, d) => {
+                device::ValidationStatus::Ok(
+                    device_region_config_id,
+                    data_rate,
+                    channel_index,
+                    f_cnt,
+                    d,
+                ) => {
+                    self.uplink_frame_set.device_region_config_id = device_region_config_id;
+                    self.uplink_frame_set.dr = data_rate;
+                    self.uplink_frame_set.ch = channel_index;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
-                device::ValidationStatus::Retransmission(f_cnt, d) => {
+                device::ValidationStatus::Retransmission(
+                    device_region_config_id,
+                    data_rate,
+                    channel_index,
+                    f_cnt,
+                    d,
+                ) => {
                     self.retransmission = true;
+                    self.uplink_frame_set.device_region_config_id = device_region_config_id;
+                    self.uplink_frame_set.dr = data_rate;
+                    self.uplink_frame_set.ch = channel_index;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
-                device::ValidationStatus::Reset(f_cnt, d) => {
+                device::ValidationStatus::Reset(
+                    device_region_config_id,
+                    data_rate,
+                    channel_index,
+                    f_cnt,
+                    d,
+                ) => {
                     self.reset = true;
+                    self.uplink_frame_set.device_region_config_id = device_region_config_id;
+                    self.uplink_frame_set.dr = data_rate;
+                    self.uplink_frame_set.ch = channel_index;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
@@ -345,6 +407,17 @@ impl Data {
 
         if dp.region != self.uplink_frame_set.region_common_name {
             return Err(anyhow!("Invalid device-profile region"));
+        }
+        if !dp.region_config_id.is_none() {
+            let device_region_config_id = dp.clone().region_config_id.unwrap();
+            self.uplink_frame_set.device_region_config_id = device_region_config_id.clone();
+            self.uplink_frame_set.dr =
+                helpers::get_uplink_dr(&device_region_config_id, &self.uplink_frame_set.tx_info)?;
+            self.uplink_frame_set.ch = helpers::get_uplink_ch(
+                &device_region_config_id,
+                self.uplink_frame_set.tx_info.frequency,
+                self.uplink_frame_set.dr,
+            )?;
         }
 
         self.tenant = Some(t);
@@ -753,7 +826,7 @@ impl Data {
 
         if let lrwn::Payload::MACPayload(pl) = &self.phy_payload.payload {
             if pl.fhdr.f_ctrl.adr_ack_req {
-                let region_conf = region::get(&self.uplink_frame_set.region_config_id)?;
+                let region_conf = region::get(&self.uplink_frame_set.device_region_config_id)?;
                 let ds = d.get_device_session_mut()?;
 
                 // We reset the device-session enabled_uplink_channel_indices and
@@ -940,7 +1013,7 @@ impl Data {
             } else {
                 None
             },
-            region_config_id: self.uplink_frame_set.region_config_id.clone(),
+            region_config_id: self.uplink_frame_set.device_region_config_id.clone(),
         };
 
         if !self._is_end_to_end_encrypted() {
@@ -1088,7 +1161,7 @@ impl Data {
         let d = self.device.as_mut().unwrap();
         let ds = d.get_device_session_mut()?;
         ds.region_config_id
-            .clone_from(&self.uplink_frame_set.region_config_id);
+            .clone_from(&self.uplink_frame_set.device_region_config_id);
         Ok(())
     }
 

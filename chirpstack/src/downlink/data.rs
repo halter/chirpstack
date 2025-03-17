@@ -1175,7 +1175,7 @@ impl Data {
         let ds = self.device.get_device_session()?;
 
         let req = adr::Request {
-            region_config_id: ufs.region_config_id.clone(),
+            region_config_id: ufs.device_region_config_id.clone(),
             region_common_name: ufs.region_common_name,
             dev_eui: self.device.dev_eui,
             mac_version: self.device_profile.mac_version,
