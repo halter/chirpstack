@@ -109,6 +109,7 @@ async fn test_gateway_filtering() {
                 rx1_delay: 1,
                 rx2_frequency: 869525000,
                 region_config_id: "eu868".into(),
+                mqtt_region_config_id: "eu868".into(),
                 ..Default::default()
             }
             .into(),
@@ -277,6 +278,7 @@ async fn test_lorawan_10_errors() {
         rx1_delay: 1,
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -474,6 +476,7 @@ async fn test_lorawan_11_errors() {
         rx1_delay: 1,
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -618,6 +621,7 @@ async fn test_lorawan_10_skip_f_cnt() {
         rx2_frequency: 869525000,
         skip_f_cnt_check: true,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -807,6 +811,7 @@ async fn test_lorawan_10_device_disabled() {
         rx1_delay: 1,
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -934,6 +939,7 @@ async fn test_lorawan_10_uplink() {
         rx1_delay: 1,
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -1563,6 +1569,7 @@ async fn test_lorawan_10_end_to_end_enc() {
         rx1_delay: 1,
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -1582,6 +1589,7 @@ async fn test_lorawan_10_end_to_end_enc() {
         rx1_delay: 1,
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -1897,6 +1905,7 @@ async fn test_lorawan_11_uplink() {
         rx1_delay: 1,
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -2130,6 +2139,7 @@ async fn test_lorawan_10_rx_delay() {
         enabled_uplink_channel_indices: vec![0, 1, 2],
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         rx1_delay: 3,
         ..Default::default()
     };
@@ -2572,6 +2582,7 @@ async fn test_lorawan_10_mac_commands() {
         enabled_uplink_channel_indices: vec![0, 1, 2],
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         rx1_delay: 1,
         ..Default::default()
     };
@@ -2931,6 +2942,7 @@ async fn test_lorawan_11_mac_commands() {
         enabled_uplink_channel_indices: vec![0, 1, 2],
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         rx1_delay: 1,
         ..Default::default()
     };
@@ -3120,6 +3132,7 @@ async fn test_lorawan_10_device_queue() {
         rx1_delay: 1,
         rx2_frequency: 869525000,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -3592,6 +3605,7 @@ async fn test_lorawan_11_device_queue() {
         rx2_frequency: 869525000,
         rx1_delay: 1,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -4066,6 +4080,7 @@ async fn test_lorawan_10_adr() {
         rx2_frequency: 869525000,
         rx1_delay: 1,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -4903,6 +4918,7 @@ async fn test_lorawan_10_device_status_request() {
         rx2_frequency: 869525000,
         rx1_delay: 1,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 
@@ -5169,6 +5185,7 @@ async fn test_lorawan_11_receive_window_selection() {
         rx2_frequency: 869525000,
         rx1_delay: 1,
         region_config_id: "eu868".into(),
+        mqtt_region_config_id: "eu868".into(),
         ..Default::default()
     };
 

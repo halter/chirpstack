@@ -1168,6 +1168,7 @@ pub mod test {
                 device_session: Some(
                     internal::DeviceSession {
                         region_config_id: "eu868".into(),
+                        mqtt_region_config_id: "eu868".into(),
                         dev_addr: vec![0x01, 0x02, 0x03, 0x04],
                         s_nwk_s_int_key: vec![
                             0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
@@ -1198,6 +1199,7 @@ pub mod test {
                 device_session: Some(
                     internal::DeviceSession {
                         region_config_id: "eu868".into(),
+                        mqtt_region_config_id: "eu868".into(),
                         dev_addr: vec![0x01, 0x02, 0x03, 0x04],
                         s_nwk_s_int_key: vec![
                             0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
@@ -1228,6 +1230,7 @@ pub mod test {
                 device_session: Some(
                     internal::DeviceSession {
                         region_config_id: "eu868".into(),
+                        mqtt_region_config_id: "eu868".into(),
                         dev_addr: vec![0x01, 0x02, 0x03, 0x04],
                         s_nwk_s_int_key: vec![
                             0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
@@ -1244,6 +1247,7 @@ pub mod test {
                         f_cnt_up: 300,
                         pending_rejoin_device_session: Some(Box::new(internal::DeviceSession {
                             region_config_id: "eu868".into(),
+                            mqtt_region_config_id: "eu868".into(),
                             dev_addr: vec![0x04, 0x03, 0x02, 0x01],
                             s_nwk_s_int_key: vec![
                                 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
@@ -1275,6 +1279,7 @@ pub mod test {
                 device_session: Some(
                     internal::DeviceSession {
                         region_config_id: "eu868".into(),
+                        mqtt_region_config_id: "eu868".into(),
                         dev_addr: vec![0x01, 0x02, 0x03, 0x04],
                         s_nwk_s_int_key: vec![
                             0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,

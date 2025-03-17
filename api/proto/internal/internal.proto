@@ -142,6 +142,9 @@ message DeviceSession {
 
   // Relay state.
   Relay relay = 41;
+
+  // Region configuration ID for MQTT.
+  string mqtt_region_config_id = 43;
 }
 
 message UplinkAdrHistory {

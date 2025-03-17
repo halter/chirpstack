@@ -1028,7 +1028,7 @@ impl Data {
         trace!("Sending downlink frame");
         let ds = self.device.get_device_session()?;
 
-        gateway::backend::send_downlink(&ds.region_config_id, &self.downlink_frame)
+        gateway::backend::send_downlink(&ds.mqtt_region_config_id, &self.downlink_frame)
             .await
             .context("Send downlink frame")?;
 

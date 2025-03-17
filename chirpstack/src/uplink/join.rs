@@ -780,6 +780,7 @@ impl JoinRequest {
 
         let mut ds = internal::DeviceSession {
             region_config_id: self.uplink_frame_set.device_region_config_id.clone(),
+            mqtt_region_config_id: self.uplink_frame_set.mqtt_region_config_id.clone(),
             dev_addr: device.dev_addr.unwrap().to_be_bytes().to_vec(),
             f_nwk_s_int_key: self.f_nwk_s_int_key.as_ref().unwrap().to_vec(),
             s_nwk_s_int_key: self.s_nwk_s_int_key.as_ref().unwrap().to_vec(),

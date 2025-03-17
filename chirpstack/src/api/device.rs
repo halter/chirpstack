@@ -515,6 +515,7 @@ impl DeviceService for Device {
 
         let mut ds = internal::DeviceSession {
             region_config_id: "".to_string(),
+            mqtt_region_config_id: "".to_string(),
             dev_addr: dev_addr.to_vec(),
             mac_version: dp.mac_version.to_proto().into(),
             s_nwk_s_int_key: s_nwk_s_int_key.to_vec(),
