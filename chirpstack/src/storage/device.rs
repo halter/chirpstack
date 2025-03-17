@@ -340,9 +340,6 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
             for d in &mut devices {
                 let mut sessions = vec![];
 
-                let mut device_region_config_id = mqtt_region_config_id.to_string();
-                let mut data_rate = tx_dr;
-                let mut channel_index = tx_ch;
                 if device_profiles
                     .get(&d.device_profile_id.to_string())
                     .is_none()
@@ -357,6 +354,10 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                 let dp = device_profiles
                     .get(&d.device_profile_id.to_string())
                     .unwrap();
+
+                let mut device_region_config_id = mqtt_region_config_id.to_string();
+                let mut data_rate = tx_dr;
+                let mut channel_index = tx_ch;
                 if !dp.region_config_id.is_none() {
                     device_region_config_id = dp.clone().region_config_id.unwrap();
                     if !relayed {
@@ -379,14 +380,25 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                     if ds.region_config_id.is_empty() {
                         ds.region_config_id = device_region_config_id.clone();
                     }
+
+                    if ds.region_config_id != device_region_config_id {
+                        device_region_config_id = ds.region_config_id.clone();
+                        if !relayed {
+                            data_rate = helpers::get_uplink_dr(&device_region_config_id, &tx_info)?;
+                        }
+                        channel_index = helpers::get_uplink_ch(
+                            &device_region_config_id,
+                            tx_frequency,
+                            data_rate,
+                        )?;
+                    }
+
                     // Check that the DevAddr and region_config_id are equal.
                     // The latter is needed because we must assure that the uplink was received
                     // under the same region as the device was activated. In case the uplink was
                     // received under two region configurations, this will start two uplink flows,
                     // each with their own region_config_id associated.
-                    if ds.region_config_id != device_region_config_id
-                        || ds.dev_addr != dev_addr.to_vec()
-                    {
+                    if ds.dev_addr != dev_addr.to_vec() {
                         continue;
                     }
 

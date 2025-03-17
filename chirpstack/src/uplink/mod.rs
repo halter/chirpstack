@@ -412,7 +412,7 @@ async fn update_gateway_metadata(ufs: &mut UplinkFrameSet) -> Result<()> {
 }
 
 fn filter_rx_info_by_tenant_id(tenant_id: Uuid, uplink: &mut UplinkFrameSet) -> Result<()> {
-    let force_gws_private = config::get_force_gws_private(&uplink.mqtt_region_config_id)?;
+    let force_gws_private = config::get_force_gws_private(&uplink.device_region_config_id)?;
     let mut rx_info_set: Vec<gw::UplinkRxInfo> = Vec::new();
 
     for rx_info in &uplink.rx_info_set {
