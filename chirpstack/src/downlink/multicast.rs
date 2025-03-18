@@ -111,7 +111,7 @@ impl Multicast {
                     expires_at = %expires_at,
                     "Discarding multicast-group queue item because it has expired"
                 );
-                multicast::delete_queue_item(&self.multicast_group_queue_item.id).await?;
+                multicast::delete_queue_item(&self.multicast_group_queue_item.id, false).await?;
                 return Err(Error::Abort);
             }
         }
@@ -137,7 +137,7 @@ impl Multicast {
                 pl_size = self.multicast_group_queue_item.data.len(),
                 "Discarding multicast-group queue item because it exceeds max. payload size"
             );
-            multicast::delete_queue_item(&self.multicast_group_queue_item.id).await?;
+            multicast::delete_queue_item(&self.multicast_group_queue_item.id, false).await?;
             return Err(Error::Abort);
         }
 

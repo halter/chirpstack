@@ -597,13 +597,16 @@ pub async fn enqueue(
     Ok((ids, f_cnt))
 }
 
-pub async fn delete_queue_item(id: &Uuid) -> Result<(), Error> {
+pub async fn delete_queue_item(id: &Uuid, ignore_not_found: bool) -> Result<(), Error> {
     let ra = diesel::delete(
         multicast_group_queue_item::dsl::multicast_group_queue_item.find(&fields::Uuid::from(id)),
     )
     .execute(&mut get_async_db_conn().await?)
     .await?;
     if ra == 0 {
+        if ignore_not_found {
+            return Ok(());
+        }
         return Err(Error::NotFound(id.to_string()));
     }
     info!(id = %id, "Multicast-group queue item deleted");
@@ -1070,8 +1073,8 @@ pub mod test {
         assert_eq!(vec![3, 2, 1], qi_get.data);
 
         // delete
-        delete_queue_item(&ids[0]).await.unwrap();
-        assert!(delete_queue_item(&ids[0]).await.is_err());
+        delete_queue_item(&ids[0], false).await.unwrap();
+        assert!(delete_queue_item(&ids[0], false).await.is_err());
 
         // Enqueue (Class-C) (GPS time)
         mg.class_c_scheduling_type = fields::MulticastGroupSchedulingType::GPS_TIME;
@@ -1097,8 +1100,8 @@ pub mod test {
         assert!(qi_get.emit_at_time_since_gps_epoch.is_some());
 
         // delete
-        delete_queue_item(&ids[0]).await.unwrap();
-        assert!(delete_queue_item(&ids[0]).await.is_err());
+        delete_queue_item(&ids[0], false).await.unwrap();
+        assert!(delete_queue_item(&ids[0], false).await.is_err());
 
         // Enqueue (Class-B)
         mg.group_type = "B".into();
@@ -1128,7 +1131,7 @@ pub mod test {
 
         // flush queue
         flush_queue(&mg.id.into()).await.unwrap();
-        assert!(delete_queue_item(&ids[0]).await.is_err());
+        assert!(delete_queue_item(&ids[0], false).await.is_err());
     }
 
     #[tokio::test]

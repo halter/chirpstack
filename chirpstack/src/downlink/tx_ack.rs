@@ -260,13 +260,16 @@ impl TxAck {
 
     async fn delete_multicast_group_queue_item(&self) -> Result<()> {
         trace!("Deleting multicast-group queue item");
-        multicast::delete_queue_item(&Uuid::from_slice(
-            &self
-                .downlink_frame
-                .as_ref()
-                .unwrap()
-                .multicast_group_queue_item_id,
-        )?)
+        multicast::delete_queue_item(
+            &Uuid::from_slice(
+                &self
+                    .downlink_frame
+                    .as_ref()
+                    .unwrap()
+                    .multicast_group_queue_item_id,
+            )?,
+            true,
+        )
         .await?;
 
         Ok(())
