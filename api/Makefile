@@ -3,7 +3,7 @@
 all: rust grpc-web go js python md java kotlin csharp php c
 
 fix-go-mod:
-	grep -l -r 'github.com/halter/chirpstack' . | xargs -n1 sed -i 's#github.com/halter/chirpstack#github.com/halter/chirpstack#g'
+	grep -l -r 'github.com/halter/chirpstack' . | xargs -n1 gsed -i 's#github.com/halter/chirpstack#github.com/halter/chirpstack#g'
 
 rust:
 	cd rust && make
