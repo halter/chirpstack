@@ -240,12 +240,15 @@ impl Data {
                     device_region_config_id,
                     data_rate,
                     channel_index,
+                    region_mismatch_with_session,
                     f_cnt,
                     d,
                 ) => {
                     self.uplink_frame_set.device_region_config_id = device_region_config_id;
                     self.uplink_frame_set.dr = data_rate;
                     self.uplink_frame_set.ch = channel_index;
+                    self.uplink_frame_set.region_mismatch_with_session =
+                        region_mismatch_with_session;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
@@ -253,6 +256,7 @@ impl Data {
                     device_region_config_id,
                     data_rate,
                     channel_index,
+                    region_mismatch_with_session,
                     f_cnt,
                     d,
                 ) => {
@@ -260,6 +264,8 @@ impl Data {
                     self.uplink_frame_set.device_region_config_id = device_region_config_id;
                     self.uplink_frame_set.dr = data_rate;
                     self.uplink_frame_set.ch = channel_index;
+                    self.uplink_frame_set.region_mismatch_with_session =
+                        region_mismatch_with_session;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
@@ -267,6 +273,7 @@ impl Data {
                     device_region_config_id,
                     data_rate,
                     channel_index,
+                    region_mismatch_with_session,
                     f_cnt,
                     d,
                 ) => {
@@ -274,6 +281,8 @@ impl Data {
                     self.uplink_frame_set.device_region_config_id = device_region_config_id;
                     self.uplink_frame_set.dr = data_rate;
                     self.uplink_frame_set.ch = channel_index;
+                    self.uplink_frame_set.region_mismatch_with_session =
+                        region_mismatch_with_session;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
@@ -341,12 +350,15 @@ impl Data {
                     device_region_config_id,
                     data_rate,
                     channel_index,
+                    region_mismatch_with_session,
                     f_cnt,
                     d,
                 ) => {
                     self.uplink_frame_set.device_region_config_id = device_region_config_id;
                     self.uplink_frame_set.dr = data_rate;
                     self.uplink_frame_set.ch = channel_index;
+                    self.uplink_frame_set.region_mismatch_with_session =
+                        region_mismatch_with_session;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
@@ -354,6 +366,7 @@ impl Data {
                     device_region_config_id,
                     data_rate,
                     channel_index,
+                    region_mismatch_with_session,
                     f_cnt,
                     d,
                 ) => {
@@ -361,6 +374,8 @@ impl Data {
                     self.uplink_frame_set.device_region_config_id = device_region_config_id;
                     self.uplink_frame_set.dr = data_rate;
                     self.uplink_frame_set.ch = channel_index;
+                    self.uplink_frame_set.region_mismatch_with_session =
+                        region_mismatch_with_session;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
@@ -368,6 +383,7 @@ impl Data {
                     device_region_config_id,
                     data_rate,
                     channel_index,
+                    region_mismatch_with_session,
                     f_cnt,
                     d,
                 ) => {
@@ -375,6 +391,8 @@ impl Data {
                     self.uplink_frame_set.device_region_config_id = device_region_config_id;
                     self.uplink_frame_set.dr = data_rate;
                     self.uplink_frame_set.ch = channel_index;
+                    self.uplink_frame_set.region_mismatch_with_session =
+                        region_mismatch_with_session;
                     self.device = Some(d);
                     self.f_cnt_up_full = f_cnt;
                 }
@@ -408,7 +426,7 @@ impl Data {
         if dp.region != self.uplink_frame_set.region_common_name {
             return Err(anyhow!("Invalid device-profile region"));
         }
-        if !dp.region_config_id.is_none() {
+        if !dp.region_config_id.is_none() && !self.uplink_frame_set.region_mismatch_with_session {
             let device_region_config_id = dp.clone().region_config_id.unwrap();
             self.uplink_frame_set.device_region_config_id = device_region_config_id.clone();
             self.uplink_frame_set.dr =

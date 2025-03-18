@@ -112,6 +112,7 @@ pub mod test {
             region_common_name: lrwn::region::CommonName::EU868,
             mqtt_region_config_id: "eu868".into(),
             device_region_config_id: "eu868".into(),
+            region_mismatch_with_session: false,
             roaming_meta_data: None,
         };
 

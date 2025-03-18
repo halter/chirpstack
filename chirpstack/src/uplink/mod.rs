@@ -90,6 +90,7 @@ pub struct UplinkFrameSet {
     pub region_common_name: CommonName,
     pub mqtt_region_config_id: String,
     pub device_region_config_id: String,
+    pub region_mismatch_with_session: bool,
     pub roaming_meta_data: Option<RoamingMetaData>,
 }
 
@@ -310,6 +311,7 @@ pub async fn handle_uplink(
         region_common_name,
         mqtt_region_config_id: region_config_id.to_string(),
         device_region_config_id: region_config_id.to_string(),
+        region_mismatch_with_session: false,
         dr: 0,
         ch: 0,
         phy_payload: PhyPayload::from_slice(&uplink.phy_payload)?,

@@ -21,9 +21,9 @@ use crate::config;
 use crate::uplink::helpers;
 
 pub enum ValidationStatus {
-    Ok(String, u8, usize, u32, Device),
-    Retransmission(String, u8, usize, u32, Device),
-    Reset(String, u8, usize, u32, Device),
+    Ok(String, u8, usize, bool, u32, Device),
+    Retransmission(String, u8, usize, bool, u32, Device),
+    Reset(String, u8, usize, bool, u32, Device),
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, AsExpression, FromSqlRow)]
@@ -381,7 +381,9 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                         ds.region_config_id = device_region_config_id.clone();
                     }
 
+                    let mut region_mismatch_with_session = false;
                     if ds.region_config_id != device_region_config_id {
+                        region_mismatch_with_session = true;
                         device_region_config_id = ds.region_config_id.clone();
                         if !relayed {
                             data_rate = helpers::get_uplink_dr(&device_region_config_id, &tx_info)?;
@@ -470,6 +472,7 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                                 device_region_config_id,
                                 data_rate,
                                 channel_index,
+                                region_mismatch_with_session,
                                 full_f_cnt,
                                 d.clone(),
                             ));
@@ -481,6 +484,7 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                                 device_region_config_id,
                                 data_rate,
                                 channel_index,
+                                region_mismatch_with_session,
                                 full_f_cnt,
                                 d.clone(),
                             ));
@@ -491,6 +495,7 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                                 device_region_config_id,
                                 data_rate,
                                 channel_index,
+                                region_mismatch_with_session,
                                 full_f_cnt,
                                 d.clone(),
                             ));
@@ -500,6 +505,7 @@ pub async fn get_for_phypayload_and_incr_f_cnt_up(
                                 device_region_config_id,
                                 data_rate,
                                 channel_index,
+                                region_mismatch_with_session,
                                 full_f_cnt,
                                 d.clone(),
                             ));
@@ -1514,15 +1520,15 @@ pub mod test {
                     assert_eq!(tst.expected_fcnt_up, pl.fhdr.f_cnt);
                 }
 
-                if let ValidationStatus::Ok(_, _, _, full_f_cnt, d) = d {
+                if let ValidationStatus::Ok(_, _, _, _, full_f_cnt, d) = d {
                     assert!(!tst.expected_retransmission);
                     assert_eq!(tst.expected_dev_eui, d.dev_eui,);
                     assert_eq!(tst.expected_fcnt_up, full_f_cnt);
-                } else if let ValidationStatus::Retransmission(_, _, _, full_f_cnt, d) = d {
+                } else if let ValidationStatus::Retransmission(_, _, _, _, full_f_cnt, d) = d {
                     assert!(tst.expected_retransmission);
                     assert_eq!(tst.expected_dev_eui, d.dev_eui,);
                     assert_eq!(tst.expected_fcnt_up, full_f_cnt);
-                } else if let ValidationStatus::Reset(_, _, _, _, d) = d {
+                } else if let ValidationStatus::Reset(_, _, _, _, _, d) = d {
                     assert!(tst.expected_reset);
                     assert_eq!(tst.expected_dev_eui, d.dev_eui,);
                 }
