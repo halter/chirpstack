@@ -10,6 +10,7 @@ use crate::storage::{
     application,
     device::{self, DeviceClass},
     device_profile, device_queue, downlink_frame,
+    error::Error as StorageError,
     helpers::get_all_device_data,
     multicast, tenant,
 };
@@ -40,7 +41,16 @@ impl TxAck {
     pub async fn handle(tx_ack: gw::DownlinkTxAck) {
         let span = span!(Level::INFO, "tx_ack", downlink_id = tx_ack.downlink_id);
         if let Err(e) = TxAck::_handle(tx_ack).instrument(span).await {
-            error!(error = %e, "Handling tx ack error");
+            if let Some(e) = e.downcast_ref::<StorageError>() {
+                match e {
+                    StorageError::NotFound(_) => {
+                        return;
+                    }
+                    _ => error!(error = %e, "Handling tx ack storage error"),
+                };
+            } else {
+                error!(error = %e, "Handling tx ack error");
+            }
         }
     }
 
