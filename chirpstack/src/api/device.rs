@@ -514,8 +514,8 @@ impl DeviceService for Device {
         let app_s_key = AES128Key::from_str(&req_da.app_s_key).map_err(|e| e.status())?;
 
         let mut ds = internal::DeviceSession {
-            region_config_id: "".to_string(),
-            mqtt_region_config_id: "".to_string(),
+            region_config_id: req_da.region_config_id.to_string(),
+            mqtt_region_config_id: req_da.mqtt_region_config_id.to_string(),
             dev_addr: dev_addr.to_vec(),
             mac_version: dp.mac_version.to_proto().into(),
             s_nwk_s_int_key: s_nwk_s_int_key.to_vec(),
@@ -644,6 +644,8 @@ impl DeviceService for Device {
                 f_cnt_up: ds.f_cnt_up,
                 n_f_cnt_down: ds.n_f_cnt_down,
                 a_f_cnt_down: ds.a_f_cnt_down,
+                region_config_id: ds.region_config_id.to_string(),
+                mqtt_region_config_id: ds.mqtt_region_config_id.to_string(),
             }),
             join_server_context: if !ds.js_session_key_id.is_empty() {
                 Some(common::JoinServerContext {
@@ -1483,6 +1485,8 @@ pub mod test {
                     f_cnt_up: 1,
                     n_f_cnt_down: 1,
                     a_f_cnt_down: 1,
+                    region_config_id: "AU_915_928_FSB_1_AND_FSB_2_AND_FSB_3".into(),
+                    mqtt_region_config_id: "AU_915_928_FSB_1_AND_FSB_2_AND_FSB_3".into(),
                 }),
             },
         );
@@ -1516,6 +1520,8 @@ pub mod test {
                 f_cnt_up: 1,
                 n_f_cnt_down: 1,
                 a_f_cnt_down: 1,
+                region_config_id: "AU_915_928_FSB_1_AND_FSB_2_AND_FSB_3".into(),
+                mqtt_region_config_id: "AU_915_928_FSB_1_AND_FSB_2_AND_FSB_3".into(),
             }),
             get_activation_resp.get_ref().device_activation
         );

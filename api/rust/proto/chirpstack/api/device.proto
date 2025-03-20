@@ -402,6 +402,12 @@ message DeviceActivation {
 
   // Downlink application frame-counter.
   uint32 a_f_cnt_down = 10;
+
+  // Region configuration ID.
+  string region_config_id = 11;
+
+  // Region configuration ID for MQTT.
+  string mqtt_region_config_id = 12;
 }
 
 message ActivateDeviceRequest {
