@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use chirpstack_api::api::device_service_server::DeviceService;
 use chirpstack_api::{api, common, internal};
-use lrwn::{AES128Key, DevAddr, EUI64};
+use lrwn::{AES128Key, CFList, DevAddr, EUI64};
 
 use super::auth::validator;
 use super::error::ToStatus;
@@ -21,7 +21,7 @@ use crate::storage::{
     error::Error as StorageError,
     fields, metrics,
 };
-use crate::{codec, devaddr::get_random_dev_addr};
+use crate::{codec, config, devaddr::get_random_dev_addr, region};
 
 pub struct Device {
     validator: validator::RequestValidator,
@@ -484,6 +484,7 @@ impl DeviceService for Device {
         &self,
         request: Request<api::ActivateDeviceRequest>,
     ) -> Result<Response<()>, Status> {
+        let inherit_region_config = &request.get_ref().inherit_region_config;
         let req_da = match &request.get_ref().device_activation {
             Some(v) => v,
             None => {
@@ -518,8 +519,8 @@ impl DeviceService for Device {
             mqtt_region_config_id: req_da.mqtt_region_config_id.to_string(),
             dev_addr: dev_addr.to_vec(),
             mac_version: dp.mac_version.to_proto().into(),
-            s_nwk_s_int_key: s_nwk_s_int_key.to_vec(),
             f_nwk_s_int_key: f_nwk_s_int_key.to_vec(),
+            s_nwk_s_int_key: s_nwk_s_int_key.to_vec(),
             nwk_s_enc_key: nwk_s_enc_key.to_vec(),
             app_s_key: Some(common::KeyEnvelope {
                 kek_label: "".into(),
@@ -531,6 +532,65 @@ impl DeviceService for Device {
             skip_f_cnt_check: d.skip_fcnt_check,
             ..Default::default()
         };
+
+        if *inherit_region_config {
+            let region_conf = region::get(&req_da.region_config_id).map_err(|e| e.status())?;
+            let region_network =
+                config::get_region_network(&req_da.region_config_id).map_err(|e| e.status())?;
+
+            ds.rx1_delay = region_network.rx1_delay.into();
+            ds.rx1_dr_offset = region_network.rx1_dr_offset.into();
+            ds.rx2_dr = region_network.rx2_dr.into();
+            ds.rx2_frequency = region_conf.get_defaults().rx2_frequency;
+            ds.enabled_uplink_channel_indices = region_conf
+                .get_default_uplink_channel_indices()
+                .iter()
+                .map(|i| *i as u32)
+                .collect();
+
+            match region_conf.get_cf_list(dp.mac_version) {
+                Some(CFList::Channels(channels)) => {
+                    for f in channels.iter().cloned() {
+                        if f == 0 {
+                            continue;
+                        }
+
+                        let i = region_conf
+                            .get_uplink_channel_index(f, true)
+                            .map_err(|e| e.status())?;
+
+                        ds.enabled_uplink_channel_indices.push(i as u32);
+
+                        // add extra channel to extra uplink channels, so that we can
+                        // keep track on frequency and data-rate changes
+                        let c = region_conf.get_uplink_channel(i).map_err(|e| e.status())?;
+
+                        ds.extra_uplink_channels.insert(
+                            i as u32,
+                            internal::DeviceSessionChannel {
+                                frequency: c.frequency,
+                                min_dr: c.min_dr as u32,
+                                max_dr: c.max_dr as u32,
+                            },
+                        );
+                    }
+                }
+                Some(CFList::ChannelMask(masks)) => {
+                    ds.enabled_uplink_channel_indices = vec![];
+
+                    for (block_i, block) in masks.iter().enumerate() {
+                        for (channel_i, enabled) in block.into_iter().enumerate() {
+                            if enabled {
+                                ds.enabled_uplink_channel_indices
+                                    .push((channel_i + (block_i * 16)) as u32);
+                            }
+                        }
+                    }
+                }
+                None => {}
+            }
+        }
+
         dp.reset_session_to_boot_params(&mut ds);
 
         let mut device_changeset = device::DeviceChangeset {
@@ -1488,6 +1548,7 @@ pub mod test {
                     region_config_id: "AU_915_928_FSB_1_AND_FSB_2_AND_FSB_3".into(),
                     mqtt_region_config_id: "AU_915_928_FSB_1_AND_FSB_2_AND_FSB_3".into(),
                 }),
+                inherit_region_config: false,
             },
         );
         let _ = service.activate(activate_req).await.unwrap();

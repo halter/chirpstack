@@ -413,6 +413,8 @@ message DeviceActivation {
 message ActivateDeviceRequest {
   // Device activation object.
   DeviceActivation device_activation = 1;
+
+  bool inherit_region_config = 2;
 }
 
 message DeactivateDeviceRequest {
