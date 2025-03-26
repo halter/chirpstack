@@ -159,8 +159,13 @@ pub async fn deduplicate_uplink(
     region_config_id: String,
     event: gw::UplinkFrame,
 ) {
+    let uf = event.clone();
+    let tx_info_str = match &uf.tx_info {
+        Some(tx_info) => hex::encode(tx_info.encode_to_vec()),
+        None => "".to_string(),
+    };
     if let Err(e) = _deduplicate_uplink(region_common_name, &region_config_id, event).await {
-        error!(error = %e.full(), "Deduplication error");
+        error!(error = %e.full(), phy = hex::encode(&uf.phy_payload), tx = tx_info_str, "Deduplication error");
     }
 }
 
