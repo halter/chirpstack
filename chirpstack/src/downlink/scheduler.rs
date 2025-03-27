@@ -17,7 +17,7 @@ lazy_static! {
     static ref DUTY_CYCLE_DURATION_GAGUE: Family<(), Gauge> = {
         let counter = Family::<(), Gauge>::default();
         prometheus::register(
-            "downlink_duty_cycle_count",
+            "downlink_duty_cycle_duration",
             "Time taken for duty cycle of downlink flow.",
             counter.clone(),
         );
@@ -26,7 +26,7 @@ lazy_static! {
     static ref DUTY_CYCLE_ITEM_COUNT_GAGUE: Family<(), Gauge> = {
         let counter = Family::<(), Gauge>::default();
         prometheus::register(
-            "downlink_duty_cycle_count",
+            "downlink_duty_cycle_item_count",
             "Time taken for duty cycle of downlink flow.",
             counter.clone(),
         );
