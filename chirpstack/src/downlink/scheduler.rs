@@ -1,12 +1,39 @@
 use anyhow::Result;
 use tokio::time::sleep;
 use tracing::{error, trace};
+use std::time::SystemTime;
+
+use prometheus_client::encoding::EncodeLabelSet;
+use prometheus_client::metrics::gauge::Gauge;
+use prometheus_client::metrics::family::Family;
+use crate::monitoring::prometheus;
 
 use super::data;
 use super::multicast as mcast;
 use crate::config;
 use crate::helpers::errors::PrintFullError;
 use crate::storage::{device, multicast};
+
+lazy_static! {
+    static ref DUTY_CYCLE_DURATION_GAGUE: Family<(), Gauge> = {
+        let counter = Family::<(), Gauge>::default();
+        prometheus::register(
+            "downlink_duty_cycle_count",
+            "Time taken for duty cycle of downlink flow.",
+            counter.clone(),
+        );
+        counter
+    };
+    static ref DUTY_CYCLE_ITEM_COUNT_GAGUE: Family<(), Gauge> = {
+        let counter = Family::<(), Gauge>::default();
+        prometheus::register(
+            "downlink_duty_cycle_count",
+            "Time taken for duty cycle of downlink flow.",
+            counter.clone(),
+        );
+        counter
+    };
+}
 
 pub async fn class_b_c_scheduler_loop() {
     let conf = config::get();
@@ -30,6 +57,8 @@ pub async fn multicast_group_queue_scheduler_loop() {
     loop {
         trace!("Starting multicast-group queue scheduler loop run");
 
+        let cycle_start = SystemTime::now();
+
         if let Err(err) =
             schedule_multicast_group_queue_batch(conf.network.scheduler.batch_size).await
         {
@@ -37,6 +66,9 @@ pub async fn multicast_group_queue_scheduler_loop() {
         } else {
             trace!("Multicast-group queue scheduler run completed successfully");
         }
+
+        let cycle_duration_millis = SystemTime::now().duration_since(cycle_start).unwrap().as_millis();
+        DUTY_CYCLE_DURATION_GAGUE.get_or_create(&()).set(cycle_duration_millis.try_into().unwrap());
 
         sleep(conf.network.scheduler.interval).await;
     }
@@ -85,6 +117,8 @@ pub async fn schedule_multicast_group_queue_batch(size: usize) -> Result<()> {
         });
         handles.push(handle);
     }
+
+    DUTY_CYCLE_ITEM_COUNT_GAGUE.get_or_create(&()).set(items.len().try_into().unwrap());
 
     futures::future::join_all(handles).await;
     Ok(())
