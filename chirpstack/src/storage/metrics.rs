@@ -58,10 +58,10 @@ pub struct Record {
 
 fn get_ttl(a: Aggregation) -> Duration {
     match a {
-        Aggregation::MINUTE => Duration::from_secs(60 * 60 * 2), // two hours
-        Aggregation::HOUR => Duration::from_secs(60 * 60 * 24 * 2), // two days
-        Aggregation::DAY => Duration::from_secs(60 * 60 * 24 * 31 * 2), // two months
-        Aggregation::MONTH => Duration::from_secs(60 * 60 * 24 * 365 * 2), // two years
+        Aggregation::MINUTE => Duration::from_secs(30 * 60), // thirty minutes
+        Aggregation::HOUR => Duration::from_secs(60 * 60 * 24 * 1), // one day
+        Aggregation::DAY => Duration::from_secs(60 * 60 * 24 * 31 * 1), // one months
+        Aggregation::MONTH => Duration::from_secs(60 * 60 * 24 * 365 * 1), // one year
     }
 }
 
