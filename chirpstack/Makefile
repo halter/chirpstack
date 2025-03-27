@@ -8,6 +8,9 @@ else
 	VARIANT_FLAGS ?= --variant="$(DATABASE)"
 endif
 
+debug-check:
+	cargo check --no-default-features --features="$(DATABASE)"
+
 debug-amd64:
 	cross build --target x86_64-unknown-linux-musl --no-default-features --features="$(DATABASE)"
 

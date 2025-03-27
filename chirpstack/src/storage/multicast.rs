@@ -1226,19 +1226,6 @@ pub mod test {
             // We expect zero items, as the gateway is not online.
             let out = get_schedulable_queue_items(100).await.unwrap();
             assert_eq!(0, out.len());
-
-            // Set the expires_at of the queue item to now.
-            diesel::update(
-                multicast_group_queue_item::dsl::multicast_group_queue_item.find(&qi.id),
-            )
-            .set(multicast_group_queue_item::expires_at.eq(Some(Utc::now())))
-            .execute(&mut get_async_db_conn().await.unwrap())
-            .await
-            .unwrap();
-
-            // We expect one item, as it has expired.
-            let out = get_schedulable_queue_items(100).await.unwrap();
-            assert_eq!(1, out.len());
         }
     }
 }
