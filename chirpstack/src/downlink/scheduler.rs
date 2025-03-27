@@ -4,7 +4,6 @@ use tokio::time::sleep;
 use tracing::{error, trace};
 
 use crate::monitoring::prometheus;
-use prometheus_client::encoding::EncodeLabelSet;
 use prometheus_client::metrics::family::Family;
 use prometheus_client::metrics::gauge::Gauge;
 
@@ -114,6 +113,9 @@ pub async fn schedule_multicast_group_queue_batch(size: usize) -> Result<()> {
 
     let mut handles = vec![];
 
+    DUTY_CYCLE_ITEM_COUNT_GAGUE
+        .get_or_create(&())
+        .set(items.clone().len().try_into().unwrap());
     for qi in items {
         let handle = tokio::spawn(async move {
             if let Err(e) = mcast::Multicast::handle_schedule_queue_item(qi).await {
@@ -122,10 +124,6 @@ pub async fn schedule_multicast_group_queue_batch(size: usize) -> Result<()> {
         });
         handles.push(handle);
     }
-
-    DUTY_CYCLE_ITEM_COUNT_GAGUE
-        .get_or_create(&())
-        .set(items.len().try_into().unwrap());
 
     futures::future::join_all(handles).await;
     Ok(())
