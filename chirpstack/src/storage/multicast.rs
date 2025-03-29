@@ -13,7 +13,7 @@ use super::schema::{
     application, device, gateway, multicast_group, multicast_group_device, multicast_group_gateway,
     multicast_group_queue_item,
 };
-use super::{db_transaction, fields, get_async_db_conn};
+use super::{db_transaction, fields, get_async_db_conn, get_async_db_conn_by_id};
 use crate::downlink::classb;
 use crate::{config, gpstime::ToDateTime, gpstime::ToGpsTime};
 
