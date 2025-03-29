@@ -66,7 +66,8 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations_sqlit
 
 #[cfg(feature = "postgres")]
 pub use postgres::{
-    db_transaction, get_async_db_conn, AsyncPgPoolConnection as AsyncDbPoolConnection,
+    db_transaction, get_async_db_conn, get_async_db_conn_by_id,
+    AsyncPgPoolConnection as AsyncDbPoolConnection,
 };
 #[cfg(feature = "sqlite")]
 pub use sqlite::{
