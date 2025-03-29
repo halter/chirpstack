@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::RwLock;
 use std::time::Instant;
 
@@ -21,7 +22,8 @@ pub type AsyncPgPool = DeadpoolPool<AsyncPgConnection>;
 pub type AsyncPgPoolConnection = DeadpoolObject<AsyncPgConnection>;
 
 lazy_static! {
-    static ref ASYNC_PG_POOL: RwLock<Option<AsyncPgPool>> = RwLock::new(None);
+    // Changed from single pool to HashMap of pools
+    static ref ASYNC_PG_POOLS: RwLock<HashMap<String, AsyncPgPool>> = RwLock::new(HashMap::new());
     static ref STORAGE_PG_CONN_GET: Histogram = {
         let histogram = Histogram::new(exponential_buckets(0.001, 2.0, 12));
         prometheus::register(
@@ -33,21 +35,21 @@ lazy_static! {
     };
 }
 
-pub fn setup(conf: &config::Postgresql) -> Result<()> {
-    info!("Setting up PostgreSQL connection pool");
+// Modified to accept a pool identifier
+pub fn setup(pool_id: &str, conf: &config::Postgresql) -> Result<()> {
+    info!("Setting up PostgreSQL connection pool for {}", pool_id);
     let mut config = ManagerConfig::default();
     config.custom_setup = Box::new(pg_establish_connection);
     let mgr = AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(&conf.dsn, config);
     let pool = DeadpoolPool::builder(mgr)
         .max_size(conf.max_open_connections as usize)
         .build()?;
-    set_async_db_pool(pool);
+    set_async_db_pool(pool_id, pool);
 
     Ok(())
 }
 
-// Source:
-// https://github.com/weiznich/diesel_async/blob/main/examples/postgres/pooled-with-rustls/src/main.rs
+// Source remains unchanged
 fn pg_establish_connection(config: &str) -> BoxFuture<ConnectionResult<AsyncPgConnection>> {
     let fut = async {
         let conf = config::get();
@@ -75,17 +77,28 @@ fn pg_establish_connection(config: &str) -> BoxFuture<ConnectionResult<AsyncPgCo
     fut.boxed()
 }
 
-fn get_async_db_pool() -> Result<AsyncPgPool> {
-    let pool_r = ASYNC_PG_POOL.read().unwrap();
-    let pool: AsyncPgPool = pool_r
-        .as_ref()
-        .ok_or_else(|| anyhow!("PostgreSQL connection pool is not initialized"))?
+// Modified to accept pool_id
+fn get_async_db_pool(pool_id: &str) -> Result<AsyncPgPool> {
+    let pools_r = ASYNC_PG_POOLS.read().unwrap();
+    let pool = pools_r
+        .get(pool_id)
+        .ok_or_else(|| {
+            anyhow!(
+                "PostgreSQL connection pool '{}' is not initialized",
+                pool_id
+            )
+        })?
         .clone();
     Ok(pool)
 }
 
+// Modified to accept pool_id
 pub async fn get_async_db_conn() -> Result<AsyncPgPoolConnection> {
-    let pool = get_async_db_pool()?;
+    return get_async_db_conn_by_id("remote").await;
+}
+
+pub async fn get_async_db_conn_by_id(pool_id: &str) -> Result<AsyncPgPoolConnection> {
+    let pool = get_async_db_pool(pool_id)?;
 
     let start = Instant::now();
     let res = pool.get().await?;
@@ -95,6 +108,7 @@ pub async fn get_async_db_conn() -> Result<AsyncPgPoolConnection> {
     Ok(res)
 }
 
+// Transaction function remains largely unchanged, just works with the connection
 pub async fn db_transaction<'a, R, E, F>(
     conn: &mut AsyncPgPoolConnection,
     callback: F,
@@ -109,7 +123,14 @@ where
     conn.transaction(callback).await
 }
 
-fn set_async_db_pool(p: AsyncPgPool) {
-    let mut pool_w = ASYNC_PG_POOL.write().unwrap();
-    *pool_w = Some(p);
+// Modified to accept pool_id
+fn set_async_db_pool(pool_id: &str, p: AsyncPgPool) {
+    let mut pools_w = ASYNC_PG_POOLS.write().unwrap();
+    pools_w.insert(pool_id.to_string(), p);
+}
+
+// Optional: Add a function to list available pools
+pub fn get_available_pools() -> Vec<String> {
+    let pools_r = ASYNC_PG_POOLS.read().unwrap();
+    pools_r.keys().cloned().collect()
 }

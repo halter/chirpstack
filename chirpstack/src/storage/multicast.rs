@@ -413,7 +413,7 @@ pub async fn enqueue(
     gateway_ids: &[EUI64],
 ) -> Result<(Vec<Uuid>, u32), Error> {
     qi.validate()?;
-    let mut c = get_async_db_conn().await?;
+    let mut c = get_async_db_conn_by_id("local").await?;
     let conf = config::get();
     let (ids, f_cnt) = db_transaction::<(Vec<Uuid>, u32), Error, _>(&mut c, |c| {
         Box::pin(async move {
@@ -601,7 +601,7 @@ pub async fn delete_queue_item(id: &Uuid, ignore_not_found: bool) -> Result<(), 
     let ra = diesel::delete(
         multicast_group_queue_item::dsl::multicast_group_queue_item.find(&fields::Uuid::from(id)),
     )
-    .execute(&mut get_async_db_conn().await?)
+    .execute(&mut get_async_db_conn_by_id("local").await?)
     .await?;
     if ra == 0 {
         if ignore_not_found {
@@ -620,7 +620,7 @@ pub async fn flush_queue(multicast_group_id: &Uuid) -> Result<(), Error> {
                 .eq(&fields::Uuid::from(multicast_group_id)),
         ),
     )
-    .execute(&mut get_async_db_conn().await?)
+    .execute(&mut get_async_db_conn_by_id("local").await?)
     .await
     .map_err(|e| Error::from_diesel(e, multicast_group_id.to_string()))?;
     info!(multicast_group_id = %multicast_group_id, "Multicast-group queue flushed");
@@ -634,13 +634,13 @@ pub async fn get_queue(multicast_group_id: &Uuid) -> Result<Vec<MulticastGroupQu
                 .eq(&fields::Uuid::from(multicast_group_id)),
         )
         .order_by(multicast_group_queue_item::created_at)
-        .load(&mut get_async_db_conn().await?)
+        .load(&mut get_async_db_conn_by_id("local").await?)
         .await
         .map_err(|e| Error::from_diesel(e, multicast_group_id.to_string()))
 }
 
 pub async fn get_schedulable_queue_items(limit: usize) -> Result<Vec<MulticastGroupQueueItem>> {
-    let mut c = get_async_db_conn().await?;
+    let mut c = get_async_db_conn_by_id("local").await?;
     db_transaction::<Vec<MulticastGroupQueueItem>, Error, _>(&mut c, |c| {
             Box::pin(async move {
                 let conf = config::get();

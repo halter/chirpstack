@@ -18,6 +18,7 @@ lazy_static! {
 pub struct Configuration {
     pub logging: Logging,
     pub postgresql: Postgresql,
+    pub postgresql_local: Postgresql,
     pub redis: Redis,
     pub sqlite: Sqlite,
     pub api: Api,
