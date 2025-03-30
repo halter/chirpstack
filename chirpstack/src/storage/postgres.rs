@@ -39,7 +39,13 @@ lazy_static! {
 pub fn setup(pool_id: &str, conf: &config::Postgresql) -> Result<()> {
     info!("Setting up PostgreSQL connection pool for {}", pool_id);
     let mut config = ManagerConfig::default();
-    config.custom_setup = Box::new(pg_establish_connection);
+    if pool_id == "remote" {
+        config.custom_setup = Box::new(pg_establish_connection);
+    } else if pool_id == "local" {
+        config.custom_setup = Box::new(pg_establish_connection_local);
+    } else {
+        return Err(anyhow!("Unknown pool identifier: {}", pool_id));
+    }
     info!("Setting up DSN for {}: {}", pool_id, conf.dsn);
     let mgr = AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(&conf.dsn, config);
     let pool = DeadpoolPool::builder(mgr)
@@ -66,6 +72,22 @@ fn pg_establish_connection(config: &str) -> BoxFuture<ConnectionResult<AsyncPgCo
             .with_no_client_auth();
         let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
         let (client, conn) = tokio_postgres::connect(config, tls)
+            .await
+            .map_err(|e| ConnectionError::BadConnection(e.to_string()))?;
+        tokio::spawn(async move {
+            if let Err(e) = conn.await {
+                error!(error = %e, "PostgreSQL connection error");
+            }
+        });
+        AsyncPgConnection::try_from(client).await
+    };
+    fut.boxed()
+}
+
+fn pg_establish_connection_local(config: &str) -> BoxFuture<ConnectionResult<AsyncPgConnection>> {
+    let fut = async {
+        let conf = config::get();
+        let (client, conn) = tokio_postgres::connect(config, tokio_postgres::NoTls)
             .await
             .map_err(|e| ConnectionError::BadConnection(e.to_string()))?;
         tokio::spawn(async move {
