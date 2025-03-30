@@ -40,6 +40,7 @@ pub fn setup(pool_id: &str, conf: &config::Postgresql) -> Result<()> {
     info!("Setting up PostgreSQL connection pool for {}", pool_id);
     let mut config = ManagerConfig::default();
     config.custom_setup = Box::new(pg_establish_connection);
+    info!("Setting up DSN for {}: {}", pool_id, conf.dsn);
     let mgr = AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(&conf.dsn, config);
     let pool = DeadpoolPool::builder(mgr)
         .max_size(conf.max_open_connections as usize)
