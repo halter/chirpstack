@@ -86,7 +86,6 @@ fn pg_establish_connection(config: &str) -> BoxFuture<ConnectionResult<AsyncPgCo
 
 fn pg_establish_connection_local(config: &str) -> BoxFuture<ConnectionResult<AsyncPgConnection>> {
     let fut = async {
-        let conf = config::get();
         let (client, conn) = tokio_postgres::connect(config, tokio_postgres::NoTls)
             .await
             .map_err(|e| ConnectionError::BadConnection(e.to_string()))?;
