@@ -120,7 +120,7 @@ pub async fn setup() -> Result<()> {
     #[cfg(feature = "postgres")]
     {
         postgres::setup("remote", &conf.postgresql)?;
-        postgres::setup("local", &conf.postgresql)?;
+        postgres::setup("local", &conf.postgresql_local)?;
     }
     #[cfg(feature = "sqlite")]
     {
