@@ -19,4 +19,9 @@ pub async fn setup() {
     tokio::spawn(async move {
         scheduler::multicast_group_queue_scheduler_loop().await;
     });
+
+    info!("Setting up multicast expired queue items scheduler loop");
+    tokio::spawn(async move {
+        scheduler::multicast_group_queue_item_expire_loop().await;
+    });
 }
