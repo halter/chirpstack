@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::time::SystemTime;
+use std::time::Instant;
 use tokio::time::sleep;
 use tracing::{error, trace};
 
@@ -26,8 +26,17 @@ lazy_static! {
     static ref DUTY_CYCLE_ITEM_COUNT_GAGUE: Family<(), Gauge> = {
         let counter = Family::<(), Gauge>::default();
         prometheus::register(
-            "downlink_duty_cycle_item_count",
-            "Time taken for duty cycle of downlink flow.",
+            "downlink_duty_cycle_item_rate",
+            "Items returned from each duty cycle of downlink flow.",
+            counter.clone(),
+        );
+        counter
+    };
+    static ref DUTY_CYCLE_DELETE_COUNT_GAGUE: Family<(), Gauge> = {
+        let counter = Family::<(), Gauge>::default();
+        prometheus::register(
+            "downlink_duty_cycle_delete_rate",
+            "Expired queue items deleted per duty cycle of downlink flow.",
             counter.clone(),
         );
         counter
@@ -55,9 +64,6 @@ pub async fn multicast_group_queue_scheduler_loop() {
 
     loop {
         trace!("Starting multicast-group queue scheduler loop run");
-
-        let cycle_start = SystemTime::now();
-
         if let Err(err) =
             schedule_multicast_group_queue_batch(conf.network.scheduler.batch_size).await
         {
@@ -65,14 +71,6 @@ pub async fn multicast_group_queue_scheduler_loop() {
         } else {
             trace!("Multicast-group queue scheduler run completed successfully");
         }
-
-        let cycle_duration_millis = SystemTime::now()
-            .duration_since(cycle_start)
-            .unwrap()
-            .as_millis();
-        DUTY_CYCLE_DURATION_GAGUE
-            .get_or_create(&())
-            .set(cycle_duration_millis.try_into().unwrap());
 
         sleep(conf.network.scheduler.interval).await;
     }
@@ -105,6 +103,9 @@ pub async fn schedule_device_queue_batch(size: usize) -> Result<()> {
 
 pub async fn schedule_multicast_group_queue_batch(size: usize) -> Result<()> {
     trace!("Getting schedulable multicast-group queue items");
+
+    let cycle_start = Instant::now();
+
     let items = multicast::get_schedulable_queue_items(size).await?;
     trace!(
         count = items.len(),
@@ -126,5 +127,41 @@ pub async fn schedule_multicast_group_queue_batch(size: usize) -> Result<()> {
     }
 
     futures::future::join_all(handles).await;
+
+    // log metrics for duty cycle time.
+    let cycle_duration_millis = Instant::now().duration_since(cycle_start).as_millis();
+    DUTY_CYCLE_DURATION_GAGUE
+        .get_or_create(&())
+        .set(cycle_duration_millis.try_into().unwrap());
+
+    Ok(())
+}
+
+pub async fn multicast_group_queue_item_expire_loop() {
+    let conf = config::get();
+
+    loop {
+        if let Err(err) = schedule_multicast_group_queue_item_expire_batch().await {
+            error!(error = %err, "Scheduling multicast-group queue batch failed");
+        } else {
+            trace!("Multicast-group queue item expiratiobn run completed successfully");
+        }
+
+        sleep(conf.network.scheduler.interval).await;
+    }
+}
+
+pub async fn schedule_multicast_group_queue_item_expire_batch() -> Result<()> {
+    trace!("Getting schedulable multicast-group queue items");
+    let delete_count: i64 = multicast::delete_expired_schedulable_queue_items()
+        .await?
+        .clone()
+        .try_into()
+        .unwrap();
+
+    DUTY_CYCLE_DELETE_COUNT_GAGUE
+        .get_or_create(&())
+        .set(delete_count);
+
     Ok(())
 }

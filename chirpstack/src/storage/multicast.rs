@@ -666,6 +666,7 @@ pub async fn get_schedulable_queue_items(limit: usize) -> Result<Vec<MulticastGr
                     "#
                 } else {
                     r#"
+                    -- get_schedulable_queue_items
                         update
                             multicast_group_queue_item
                         set
@@ -706,6 +707,36 @@ pub async fn get_schedulable_queue_items(limit: usize) -> Result<Vec<MulticastGr
         })
         .await
         .context("Get schedulable multicast-group queue items")
+}
+
+pub async fn delete_expired_schedulable_queue_items() -> Result<usize> {
+    if cfg!(feature = "sqlite") {
+        return Ok(0);
+    }
+
+    let mut c = get_async_db_conn_by_id("local").await?;
+    db_transaction::<usize, Error, _>(&mut c, |c| {
+        Box::pin(async move {
+            diesel::sql_query(
+                r#"
+                    -- delete_expired_schedulable_queue_items
+                    delete from
+                    multicast_group_queue_item
+                    where id in (
+                        select id
+                        from multicast_group_queue_item
+                        where expires_at < now()
+                        for update skip locked
+                    )
+                "#,
+            )
+            .execute(c)
+            .await
+            .map_err(|e| Error::from_diesel(e, "".into()))
+        })
+    })
+    .await
+    .context("Get schedulable multicast-group queue items")
 }
 
 #[cfg(test)]
@@ -1236,6 +1267,98 @@ pub mod test {
             // We expect zero items, as the gateway is not online.
             let out = get_schedulable_queue_items(100).await.unwrap();
             assert_eq!(0, out.len());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_delete_expired_schedulable_queue_items() {
+        let _guard = test::prepare().await;
+
+        let t = tenant::create(tenant::Tenant {
+            name: "test-tenant".into(),
+            can_have_gateways: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+        let app = application::create(application::Application {
+            name: "test-app".into(),
+            tenant_id: t.id,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+        let gw = gateway::create(gateway::Gateway {
+            gateway_id: EUI64::from_be_bytes([1, 2, 3, 4, 5, 6, 7, 8]),
+            name: "test-gw".into(),
+            tenant_id: t.id,
+            stats_interval_secs: 30,
+            last_seen_at: Some(Utc::now()),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+        let mg = create(MulticastGroup {
+            application_id: app.id,
+            name: "test-mg".into(),
+            region: CommonName::EU868,
+            mc_addr: DevAddr::from_be_bytes([1, 2, 3, 4]),
+            mc_nwk_s_key: AES128Key::from_bytes([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8]),
+            f_cnt: 10,
+            group_type: "C".into(),
+            dr: 1,
+            frequency: 868100000,
+            class_c_scheduling_type: fields::MulticastGroupSchedulingType::DELAY,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+        let mut qi = MulticastGroupQueueItem {
+            scheduler_run_after: Utc::now(),
+            multicast_group_id: mg.id,
+            gateway_id: gw.gateway_id,
+            f_cnt: mg.f_cnt,
+            f_port: 10,
+            data: vec![1, 2, 3],
+            expires_at: Some(Utc::now() + Duration::hours(1 as i64)),
+            ..Default::default()
+        };
+        let mut expired_qi = MulticastGroupQueueItem {
+            scheduler_run_after: Utc::now(),
+            multicast_group_id: mg.id,
+            gateway_id: gw.gateway_id,
+            f_cnt: mg.f_cnt,
+            f_port: 10,
+            data: vec![1, 2, 3],
+            expires_at: Some(Utc::now() - Duration::hours(1 as i64)),
+            ..Default::default()
+        };
+
+        qi = diesel::insert_into(multicast_group_queue_item::table)
+            .values(&qi)
+            .get_result(&mut get_async_db_conn().await.unwrap())
+            .await
+            .unwrap();
+        expired_qi = diesel::insert_into(multicast_group_queue_item::table)
+            .values(&expired_qi)
+            .get_result(&mut get_async_db_conn().await.unwrap())
+            .await
+            .unwrap();
+
+        // The below features are for PostgreSQL only.
+        #[cfg(feature = "postgres")]
+        {
+            // We expect to delete one expired queue item.
+            let out = delete_expired_schedulable_queue_items().await.unwrap();
+            assert_eq!(1, out);
+
+            // We expect zero items because there are no more expired queue items
+            let out = delete_expired_schedulable_queue_items().await.unwrap();
+            assert_eq!(0, out);
         }
     }
 }
