@@ -239,39 +239,39 @@ pub async fn create(d: Device) -> Result<Device, Error> {
     let mut c = get_async_db_conn().await?;
     let d: Device = db_transaction::<Device, Error, _>(&mut c, |c| {
         Box::pin(async move {
-            let query = tenant::dsl::tenant
-                .select((
-                    tenant::dsl::id,
-                    tenant::dsl::created_at,
-                    tenant::dsl::updated_at,
-                    tenant::dsl::name,
-                    tenant::dsl::description,
-                    tenant::dsl::can_have_gateways,
-                    tenant::dsl::max_device_count,
-                    tenant::dsl::max_gateway_count,
-                    tenant::dsl::private_gateways_up,
-                    tenant::dsl::private_gateways_down,
-                    tenant::dsl::tags,
-                ))
-                .inner_join(application::table)
-                .filter(application::dsl::id.eq(&d.application_id));
-            // use for update to lock the tenant
-            #[cfg(feature = "postgres")]
-            let query = query.for_update();
-            let t: super::tenant::Tenant = query.first(c).await?;
-
-            let dev_count: i64 = device::dsl::device
-                .select(dsl::count_star())
-                .inner_join(application::table)
-                .filter(application::dsl::tenant_id.eq(&t.id))
-                .first(c)
-                .await?;
-
-            if t.max_device_count != 0 && dev_count as i32 >= t.max_device_count {
-                return Err(Error::NotAllowed(
-                    "Max number of devices exceeded for tenant".into(),
-                ));
-            }
+            // let query = tenant::dsl::tenant
+            //     .select((
+            //         tenant::dsl::id,
+            //         tenant::dsl::created_at,
+            //         tenant::dsl::updated_at,
+            //         tenant::dsl::name,
+            //         tenant::dsl::description,
+            //         tenant::dsl::can_have_gateways,
+            //         tenant::dsl::max_device_count,
+            //         tenant::dsl::max_gateway_count,
+            //         tenant::dsl::private_gateways_up,
+            //         tenant::dsl::private_gateways_down,
+            //         tenant::dsl::tags,
+            //     ))
+            //     .inner_join(application::table)
+            //     .filter(application::dsl::id.eq(&d.application_id));
+            // // use for update to lock the tenant
+            // #[cfg(feature = "postgres")]
+            // let query = query.for_update();
+            // let t: super::tenant::Tenant = query.first(c).await?;
+            //
+            // let dev_count: i64 = device::dsl::device
+            //     .select(dsl::count_star())
+            //     .inner_join(application::table)
+            //     .filter(application::dsl::tenant_id.eq(&t.id))
+            //     .first(c)
+            //     .await?;
+            //
+            // if t.max_device_count != 0 && dev_count as i32 >= t.max_device_count {
+            //     return Err(Error::NotAllowed(
+            //         "Max number of devices exceeded for tenant".into(),
+            //     ));
+            // }
 
             diesel::insert_into(device::table)
                 .values(&d)
@@ -797,7 +797,7 @@ pub async fn get_with_class_b_c_queue_items(limit: usize) -> Result<Vec<Device>>
                         scheduler_run_after = $3
                     where
                         dev_eui in (
-                            select 
+                            select
                                 d.dev_eui
                             from
                                 device d
