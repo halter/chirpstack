@@ -6,6 +6,7 @@ use tracing::{error, trace};
 use crate::monitoring::prometheus;
 use prometheus_client::metrics::family::Family;
 use prometheus_client::metrics::gauge::Gauge;
+use prometheus_client::metrics::counter::Counter;
 
 use super::data;
 use super::multicast as mcast;
@@ -23,10 +24,10 @@ lazy_static! {
         );
         counter
     };
-    static ref DUTY_CYCLE_ITEM_COUNT_GAGUE: Family<(), Gauge> = {
-        let counter = Family::<(), Gauge>::default();
+    static ref DUTY_CYCLE_ITEM_COUNT: Family<(), Counter> = {
+        let counter = Family::<(), Counter>::default();
         prometheus::register(
-            "downlink_duty_cycle_item_rate",
+            "downlink_duty_cycle_item_count",
             "Items returned from each duty cycle of downlink flow.",
             counter.clone(),
         );
@@ -114,9 +115,9 @@ pub async fn schedule_multicast_group_queue_batch(size: usize) -> Result<()> {
 
     let mut handles = vec![];
 
-    DUTY_CYCLE_ITEM_COUNT_GAGUE
+    DUTY_CYCLE_ITEM_COUNT
         .get_or_create(&())
-        .set(items.clone().len().try_into().unwrap());
+        .inc_by(items.clone().len().try_into().unwrap());
     for qi in items {
         let handle = tokio::spawn(async move {
             if let Err(e) = mcast::Multicast::handle_schedule_queue_item(qi).await {
