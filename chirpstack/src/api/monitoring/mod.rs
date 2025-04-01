@@ -13,6 +13,20 @@ use tracing::info;
 use crate::config;
 use crate::monitoring::prometheus;
 use crate::storage::{get_async_db_conn, get_async_redis_conn};
+use prometheus_client::metrics::counter::Counter;
+use prometheus_client::metrics::family::Family;
+
+lazy_static! {
+    static ref HEALTH_CHECK_COUNTER: Family<(), Counter> = {
+        let counter = Family::<(), Counter>::default();
+        prometheus::register(
+            "monitoring_health_check_count",
+            "Count of health check actions performed.",
+            counter.clone(),
+        );
+        counter
+    };
+}
 
 pub async fn setup() -> Result<()> {
     let conf = config::get();
@@ -54,6 +68,8 @@ async fn _health_handler() -> Result<()> {
 
     let mut r = get_async_redis_conn().await?;
     let _: String = redis::cmd("PING").query_async(&mut r).await?;
+
+    HEALTH_CHECK_COUNTER.get_or_create(&()).inc();
 
     Ok(())
 }

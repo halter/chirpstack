@@ -108,10 +108,8 @@ pub async fn schedule_multicast_group_queue_batch(size: usize) -> Result<()> {
     let cycle_start = Instant::now();
 
     let items = multicast::get_schedulable_queue_items(size).await?;
-    trace!(
-        count = items.len(),
-        "Got this number of multicast-group queue items"
-    );
+    let count = items.len();
+    trace!(count, "Got this number of multicast-group queue items");
 
     let mut handles = vec![];
 
